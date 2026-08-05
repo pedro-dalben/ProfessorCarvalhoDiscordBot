@@ -3,7 +3,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm
 WORKDIR /app
 RUN addgroup --system --gid 1001 professor && adduser --system --uid 1001 --gid 1001 professor
 
-FROM base AS deps
+FROM base AS builder
+ENV CI=true
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY tsconfig.json tsconfig.base.json ./
 COPY packages/config/package.json packages/config/
@@ -18,13 +19,10 @@ COPY packages/queue/package.json packages/queue/
 COPY packages/testing/package.json packages/testing/
 COPY apps/bot-api/package.json apps/bot-api/
 COPY apps/worker/package.json apps/worker/
-RUN corepack enable && pnpm install --frozen-lockfile --prod
-
-FROM deps AS builder
-RUN pnpm install --frozen-lockfile
+RUN corepack enable && pnpm install --frozen-lockfile
 COPY packages/ packages/
 COPY apps/ apps/
-RUN pnpm build
+RUN pnpm --filter @bigbangcraft/domain --filter @bigbangcraft/config --filter @bigbangcraft/observability --filter @bigbangcraft/cobblemon-data run build &&     pnpm --filter @bigbangcraft/csa-integration --filter @bigbangcraft/database --filter @bigbangcraft/pokemon-data --filter @bigbangcraft/queue run build &&     pnpm --filter @bigbangcraft/discord-ui --filter @bigbangcraft/testing run build &&     pnpm --filter @bigbangcraft/professor-carvalho-bot-api --filter @bigbangcraft/professor-carvalho-worker run build
 
 FROM base AS runner
 COPY --from=builder /app/node_modules /app/node_modules

@@ -23,7 +23,8 @@ export function createMemoryStore(): KeyValueStore & {
       });
       await Promise.resolve();
     },
-    setNx(key: string, value: string, ttlSeconds: number): boolean {
+    /* eslint-disable-next-line @typescript-eslint/require-await */
+    async setNx(key: string, value: string, ttlSeconds: number): Promise<boolean> {
       if (store.has(key)) {
         return false;
       }
