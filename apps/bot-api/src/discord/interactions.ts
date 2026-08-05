@@ -1,5 +1,6 @@
 import { InteractionType, type Interaction } from "discord.js";
 import type { AppLogger } from "@bigbangcraft/observability";
+import { generateCorrelationCode } from "@bigbangcraft/domain";
 import type { PokemonProvider, AutocompleteRanker } from "@bigbangcraft/pokemon-data";
 import {
   handleDexCommand,
@@ -9,24 +10,13 @@ import {
   handleStatusCommand,
   handlePokemonAutocomplete,
 } from "@bigbangcraft/discord-ui";
-import type { SpawnSnapshot } from "@bigbangcraft/cobblemon-data";
+import type { StatusService } from "../main.js";
 
 export interface InteractionDeps {
   logger: AppLogger;
   provider: PokemonProvider;
   ranker: AutocompleteRanker;
-  snapshotIsLoaded: boolean;
-  currentSnapshot: SpawnSnapshot | null;
-  snapshotAgeSeconds: number | null;
-  appVersion: string;
-  serverAddress: string;
-  siteUrl?: string;
-  databaseReachable: boolean;
-  redisReachable: boolean;
-  workerHeartbeatAgeSeconds: number | null;
-  pokemonCacheEntries: number;
-  csaMode: string;
-  queueSummary: Array<{ queue: string; waiting: number; active: number; failed: number }>;
+  statusService: StatusService;
 }
 
 export function createInteractionHandler(
@@ -34,7 +24,11 @@ export function createInteractionHandler(
 ): (interaction: Interaction) => Promise<void> {
   return async (interaction: Interaction): Promise<void> => {
     if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {
-      await handlePokemonAutocomplete(interaction, deps.ranker);
+      try {
+        await handlePokemonAutocomplete(interaction, deps.ranker);
+      } catch (error) {
+        deps.logger.error({ err: error }, "Erro em autocomplete.");
+      }
       return;
     }
 
@@ -43,54 +37,89 @@ export function createInteractionHandler(
     const commandInteraction = interaction;
     const commandName = commandInteraction.commandName;
 
+    let deferred = false;
     try {
+      const needsDefer = ["dex", "fraquezas", "spawn", "ajuda", "status-professor"].includes(
+        commandName,
+      );
+      if (needsDefer) {
+        await commandInteraction.deferReply();
+        deferred = true;
+      }
+
       switch (commandName) {
         case "dex":
-          await commandInteraction.deferReply();
           await handleDexCommand(commandInteraction, deps.provider);
           break;
         case "fraquezas":
-          await commandInteraction.deferReply();
           await handleFraquezasCommand(commandInteraction, deps.provider);
           break;
         case "spawn":
-          await commandInteraction.deferReply();
           await handleSpawnCommand(commandInteraction, {
-            getSnapshot: () => deps.currentSnapshot,
+            getSnapshot: () => deps.statusService.getSnapshot(),
           });
           break;
-        case "ajuda":
-          await commandInteraction.deferReply();
+        case "ajuda": {
+          const snap = deps.statusService.getSnapshotStatus();
           await handleAjudaCommand(commandInteraction, {
-            serverAddress: deps.serverAddress,
-            siteUrl: deps.siteUrl,
-            snapshotDate: deps.currentSnapshot
-              ? new Date(deps.currentSnapshot.generatedAt)
-              : undefined,
+            serverAddress: deps.statusService.getServerAddress(),
+            siteUrl: deps.statusService.getSiteUrl(),
+            snapshotDate: snap.generatedAt ? new Date(snap.generatedAt) : undefined,
           });
           break;
-        case "status-professor":
-          await commandInteraction.deferReply();
+        }
+        case "status-professor": {
+          const queueSummary = await deps.statusService.getQueueSummary();
+          const [dbReachable, redisReachable, heartbeatAge] = await Promise.all([
+            deps.statusService.getDatabaseReachable(),
+            deps.statusService.getRedisReachable(),
+            deps.statusService.getWorkerHeartbeatAgeSeconds(),
+          ]);
+          const snap = deps.statusService.getSnapshotStatus();
           await handleStatusCommand(commandInteraction, {
-            discordReady: true,
-            databaseReachable: deps.databaseReachable,
-            redisReachable: deps.redisReachable,
-            workerHeartbeatAgeSeconds: deps.workerHeartbeatAgeSeconds,
-            pokemonCacheEntries: deps.pokemonCacheEntries,
-            spawnSnapshotLoaded: deps.snapshotIsLoaded,
-            spawnSnapshotGeneratedAt: deps.currentSnapshot?.generatedAt ?? null,
-            spawnSnapshotAgeSeconds: deps.snapshotAgeSeconds,
-            spawnSnapshotEntryCount: deps.currentSnapshot?.entryCount ?? null,
-            csaMode: deps.csaMode,
-            queueSummary: deps.queueSummary,
-            appVersion: deps.appVersion,
+            discordReady: deps.statusService.getDiscordReady(),
+            databaseReachable: dbReachable,
+            redisReachable: redisReachable,
+            workerHeartbeatAgeSeconds: heartbeatAge,
+            pokemonCacheEntries: deps.statusService.getPokemonCacheEntries(),
+            spawnSnapshotLoaded: snap.loaded,
+            spawnSnapshotGeneratedAt: snap.generatedAt,
+            spawnSnapshotAgeSeconds: snap.ageSeconds,
+            spawnSnapshotEntryCount: snap.entryCount,
+            csaMode: deps.statusService.getCsaMode(),
+            queueSummary,
+            appVersion: deps.statusService.getAppVersion(),
           });
           break;
+        }
         default:
           break;
       }
     } catch (error) {
-      deps.logger.error({ err: error, command: commandName }, "Erro ao processar comando.");
+      const correlationCode = generateCorrelationCode();
+      deps.logger.error(
+        { err: error, command: commandName, correlationCode },
+        "Erro ao processar comando.",
+      );
+      try {
+        if (deferred) {
+          await commandInteraction.editReply({
+            content: `Não consegui concluir essa consulta. Código de referência: ${correlationCode}`,
+            allowedMentions: { parse: [] },
+          });
+        } else if (!commandInteraction.replied) {
+          await commandInteraction.reply({
+            content: `Não consegui concluir essa consulta. Código de referência: ${correlationCode}`,
+            flags: "Ephemeral",
+            allowedMentions: { parse: [] },
+          });
+        }
+      } catch (replyError) {
+        deps.logger.error(
+          { err: replyError, correlationCode },
+          "Falha ao enviar resposta de erro.",
+        );
+      }
     }
   };
 }

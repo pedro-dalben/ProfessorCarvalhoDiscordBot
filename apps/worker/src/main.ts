@@ -5,7 +5,10 @@ import { createLogger, createMetrics, ShutdownManager } from "@bigbangcraft/obse
 import {
   createDatabaseClient,
   createSpawnEvent,
+  findSpawnEventByIntegrationEventId,
   cleanupExpiredEvents,
+  markEventProcessed,
+  markEventFailed,
 } from "@bigbangcraft/database";
 import {
   createRedisClient,
@@ -46,12 +49,6 @@ function main(): void {
   });
   const queues = createQueues(redisClient, config.REDIS_KEY_PREFIX);
 
-  const alertChannelId = config.DISCORD_SPAWN_ALERT_CHANNEL_ID;
-  const alertRoleIds: string[] = [];
-  if (config.DISCORD_SHINY_ALERT_ROLE_ID) alertRoleIds.push(config.DISCORD_SHINY_ALERT_ROLE_ID);
-  if (config.DISCORD_LEGENDARY_ALERT_ROLE_ID)
-    alertRoleIds.push(config.DISCORD_LEGENDARY_ALERT_ROLE_ID);
-
   const spawnWorker = new Worker<ProcessCsaAlertPayload>(
     QUEUE_NAMES.SPAWN_ALERTS,
     async (job: Job<ProcessCsaAlertPayload>) => {
@@ -64,7 +61,7 @@ function main(): void {
       if (config.SPAWN_COORDINATE_POLICY === "hidden") {
         event.coordinates = undefined;
       } else if (config.SPAWN_COORDINATE_POLICY === "region") {
-        // coordinates preserved as-is for region-based delivery
+        // coordinates preserved for region-based delivery
       } else {
         if (!config.SPAWN_STORE_EXACT_COORDINATES) {
           event.coordinates = undefined;
@@ -73,6 +70,13 @@ function main(): void {
 
       if (!config.SPAWN_SHOW_NEAREST_PLAYER) {
         event.nearestPlayer = undefined;
+      }
+
+      const existing = await findSpawnEventByIntegrationEventId(db, eventId);
+      if (existing) {
+        logger.info({ eventId }, "spawn_events já existe para este integration_event — idempotente.");
+        await markEventProcessed(db, eventId);
+        return;
       }
 
       const spawnEvent = await createSpawnEvent(db, {
@@ -98,11 +102,25 @@ function main(): void {
         occurredAt: new Date(event.receivedAt),
       });
 
+      await markEventProcessed(db, eventId);
+
+      const alertChannelId = config.DISCORD_SPAWN_ALERT_CHANNEL_ID;
       if (alertChannelId && config.DISCORD_TOKEN) {
+        const roleIds: string[] = [];
+        if (event.shiny && config.DISCORD_SHINY_ALERT_ROLE_ID) {
+          roleIds.push(config.DISCORD_SHINY_ALERT_ROLE_ID);
+        }
+        if (
+          (event.legendary || event.mythical || event.ultraBeast) &&
+          config.DISCORD_LEGENDARY_ALERT_ROLE_ID
+        ) {
+          roleIds.push(config.DISCORD_LEGENDARY_ALERT_ROLE_ID);
+        }
+
         await queues.spawnDelivery.add(JOB_NAMES.DELIVER_DISCORD_SPAWN_ALERT, {
           spawnEventId: spawnEvent?.id ?? eventId,
           channelId: alertChannelId,
-          roleIds: alertRoleIds,
+          roleIds,
           coordinatePolicy: config.SPAWN_COORDINATE_POLICY,
           regionGridSize: config.SPAWN_REGION_GRID_SIZE,
           showNearestPlayer: config.SPAWN_SHOW_NEAREST_PLAYER,
@@ -121,10 +139,25 @@ function main(): void {
     },
   );
 
+  spawnWorker.on("failed", (job: Job<ProcessCsaAlertPayload> | undefined, error: Error) => {
+    if (job) {
+      const attemptsMade = job.attemptsMade;
+      const maxAttempts = job.opts.attempts ?? 3;
+      logger.error(
+        { eventId: job.data.eventId, attemptsMade, maxAttempts, err: error },
+        "Job process-csa-alert falhou.",
+      );
+      if (attemptsMade >= maxAttempts) {
+        void markEventFailed(db, job.data.eventId, "CSA_PROCESSING_FAILED");
+      }
+    }
+  });
+
   const deliveryWorker = new Worker<DeliverDiscordSpawnAlertPayload>(
     QUEUE_NAMES.SPAWN_DELIVERY,
     async (job: Job<DeliverDiscordSpawnAlertPayload>) => {
       const {
+        spawnEventId,
         channelId,
         roleIds,
         coordinatePolicy,
@@ -138,17 +171,35 @@ function main(): void {
         return;
       }
 
-      const rest = new REST({ version: "10" }).setToken(config.DISCORD_TOKEN);
+      const importDeps = await import("@bigbangcraft/database");
+      const dbClient = db;
+      const spawnRow = await importDeps.findSpawnEventByIntegrationEventId(dbClient, spawnEventId);
 
       const embed = buildSpawnAlertEmbed(
         {
           source: "csa",
+          sourceVersion: config.CSA_EXPECTED_SOURCE_VERSION,
           serverId: config.BIGMONCRAFT_SERVER_ID,
-          receivedAt: new Date().toISOString(),
-          displayName: "Pokémon detectado",
-          level: 50,
-          biome: "Savanna",
-          bucket: "ULTRA_RARE",
+          receivedAt: spawnRow?.occurredAt?.toISOString() ?? new Date().toISOString(),
+          species: spawnRow?.species ?? undefined,
+          displayName: spawnRow?.species ?? undefined,
+          dexNumber: spawnRow?.dexNumber ?? undefined,
+          level: spawnRow?.level ?? undefined,
+          shiny: spawnRow?.shiny ?? false,
+          legendary: spawnRow?.legendary ?? false,
+          mythical: spawnRow?.mythical ?? false,
+          ultraBeast: spawnRow?.ultraBeast ?? false,
+          paradox: spawnRow?.paradox ?? false,
+          bucket: spawnRow?.bucket ?? undefined,
+          biome: spawnRow?.biome ?? undefined,
+          dimension: spawnRow?.dimension ?? undefined,
+          coordinates:
+            spawnRow?.coordinateRegion
+              ? {
+                  x: parseCoordinate(spawnRow.coordinateRegion, "x"),
+                  z: parseCoordinate(spawnRow.coordinateRegion, "z"),
+                }
+              : undefined,
         },
         { coordinatePolicy, regionGridSize, showNearestPlayer, serverAddress },
       );
@@ -160,6 +211,8 @@ function main(): void {
         roles: roleIds.filter(Boolean),
       };
 
+      const rest = new REST({ version: "10" }).setToken(config.DISCORD_TOKEN);
+
       try {
         await rest.post(Routes.channelMessages(channelId), {
           body: {
@@ -167,16 +220,16 @@ function main(): void {
             allowed_mentions: allowedMentions,
           },
         });
-        metrics.spawnAlertDeliveredTotal
-          .labels(
-            embed.title.includes("shiny") ? "shiny" : "standard",
-            config.BIGMONCRAFT_SERVER_ID,
-          )
-          .inc();
-        logger.info({ channelId }, "Alerta de spawn entregue no Discord.");
+        const tierLabel = embed.title.includes("shiny")
+          ? "shiny"
+          : embed.title.includes("raro") || embed.title.includes("legendary")
+            ? "rare"
+            : "standard";
+        metrics.spawnAlertDeliveredTotal.labels(tierLabel, config.BIGMONCRAFT_SERVER_ID).inc();
+        logger.info({ channelId, spawnEventId }, "Alerta de spawn entregue no Discord.");
       } catch (error) {
         metrics.spawnAlertFailedTotal.labels("discord-error", "delivery").inc();
-        logger.error({ err: error, channelId }, "Falha ao entregar alerta no Discord.");
+        logger.error({ err: error, channelId, spawnEventId }, "Falha ao entregar alerta no Discord.");
         throw error;
       }
     },
@@ -225,6 +278,7 @@ function main(): void {
   shutdownManager.register("queues", async () => {
     await Promise.all([
       queues.spawnAlerts.close(),
+      queues.spawnDelivery.close(),
       queues.maintenance.close(),
       queues.usageAggregation.close(),
     ]);
@@ -238,6 +292,14 @@ function main(): void {
   shutdownManager.installSignalHandlers();
 
   logger.info("Professor Carvalho (worker) pronto.");
+}
+
+function parseCoordinate(region: string, axis: "x" | "z"): number | undefined {
+  const parts = region.split(",");
+  const raw = axis === "x" ? parts[0] : parts[1];
+  if (!raw) return undefined;
+  const num = Number.parseFloat(raw);
+  return Number.isFinite(num) ? num : undefined;
 }
 
 process.on("uncaughtException", (error) => {

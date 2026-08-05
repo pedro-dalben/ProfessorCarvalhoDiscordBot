@@ -29,7 +29,7 @@ export async function createServer(
 
   const app = Fastify({
     logger: false,
-    trustProxy: true,
+    trustProxy: config.TRUSTED_PROXY_ADDRESSES ?? false,
     bodyLimit: config.CSA_BODY_LIMIT_BYTES,
   });
 

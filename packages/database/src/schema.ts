@@ -69,27 +69,35 @@ export const integrationEvents = pgTable(
   }),
 );
 
-export const spawnEvents = pgTable("spawn_events", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  integrationEventId: uuid("integration_event_id").references(() => integrationEvents.id),
-  serverId: text("server_id").notNull(),
-  species: text("species"),
-  form: text("form"),
-  dexNumber: integer("dex_number"),
-  level: integer("level"),
-  shiny: boolean("shiny").default(false),
-  legendary: boolean("legendary").default(false),
-  mythical: boolean("mythical").default(false),
-  ultraBeast: boolean("ultra_beast").default(false),
-  paradox: boolean("paradox").default(false),
-  rarity: text("rarity"),
-  bucket: text("bucket"),
-  biome: text("biome"),
-  dimension: text("dimension"),
-  coordinateRegion: text("coordinate_region"),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
+export const spawnEvents = pgTable(
+  "spawn_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    integrationEventId: uuid("integration_event_id").references(() => integrationEvents.id),
+    serverId: text("server_id").notNull(),
+    species: text("species"),
+    form: text("form"),
+    dexNumber: integer("dex_number"),
+    level: integer("level"),
+    shiny: boolean("shiny").default(false),
+    legendary: boolean("legendary").default(false),
+    mythical: boolean("mythical").default(false),
+    ultraBeast: boolean("ultra_beast").default(false),
+    paradox: boolean("paradox").default(false),
+    rarity: text("rarity"),
+    bucket: text("bucket"),
+    biome: text("biome"),
+    dimension: text("dimension"),
+    coordinateRegion: text("coordinate_region"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    integrationEventUnique: uniqueIndex(
+      "spawn_events_integration_event_id_unique",
+    ).on(table.integrationEventId),
+  }),
+);
 
 export const commandUsageDaily = pgTable(
   "command_usage_daily",

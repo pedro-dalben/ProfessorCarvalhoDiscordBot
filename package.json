@@ -41,6 +41,7 @@
     "@types/node": "latest",
     "@vitest/coverage-v8": "latest",
     "concurrently": "latest",
+    "drizzle-kit": "^0.31.10",
     "eslint": "latest",
     "eslint-config-prettier": "latest",
     "globals": "latest",

@@ -3,7 +3,7 @@ import "dotenv/config";
 import { parseEnv } from "@bigbangcraft/config";
 import { createLogger, createMetrics, ShutdownManager } from "@bigbangcraft/observability";
 import { createDatabaseClient, testDatabaseConnection } from "@bigbangcraft/database";
-import { createRedisClient, createQueues } from "@bigbangcraft/queue";
+import { createRedisClient, createQueues, getQueueMetrics } from "@bigbangcraft/queue";
 import {
   PokeApiClient,
   CachedPokemonProvider,
@@ -15,6 +15,7 @@ import { AutocompleteRanker, loadAutocompleteIndex } from "@bigbangcraft/pokemon
 import { SnapshotStore } from "@bigbangcraft/cobblemon-data";
 import { SpawnDedupService } from "@bigbangcraft/csa-integration";
 import { ALL_SLASH_COMMANDS } from "@bigbangcraft/discord-ui";
+import type { SpawnSnapshot } from "@bigbangcraft/cobblemon-data";
 import { createServer } from "./api/server.js";
 import { stat } from "node:fs/promises";
 import {
@@ -24,6 +25,7 @@ import {
 } from "./discord/client.js";
 import { createInteractionHandler } from "./discord/interactions.js";
 import type { DedupStore } from "@bigbangcraft/csa-integration";
+import type { Redis } from "ioredis";
 
 async function main(): Promise<void> {
   const config = parseEnv();
@@ -80,7 +82,10 @@ async function main(): Promise<void> {
     }
   }
 
-  const cacheStore: KeyValueStore = new RedisKeyValueStore(redisClient, config.REDIS_KEY_PREFIX);
+  const cacheStore: KeyValueStore = new RedisKeyValueStore(
+    redisClient,
+    config.REDIS_KEY_PREFIX,
+  );
   const memoryCache = new InMemoryTtlCache(512);
   const rawClient = new PokeApiClient({
     baseUrl: config.POKEAPI_BASE_URL,
@@ -136,6 +141,15 @@ async function main(): Promise<void> {
     keyPrefix: config.REDIS_KEY_PREFIX,
   });
 
+  const statusService = createStatusService({
+    db,
+    redisClient,
+    queues,
+    memoryCache,
+    snapshotStore,
+    config,
+  });
+
   const { app, shutdown: shutdownServer } = await createServer({
     config,
     logger,
@@ -153,18 +167,7 @@ async function main(): Promise<void> {
       logger,
       provider,
       ranker,
-      snapshotIsLoaded: snapshotStore.isLoaded,
-      currentSnapshot: snapshotStore.current,
-      snapshotAgeSeconds: snapshotStore.ageSeconds,
-      appVersion: config.APP_VERSION,
-      serverAddress: config.BIGMONCRAFT_SERVER_ADDRESS,
-      siteUrl: config.BIGMONCRAFT_SITE_URL,
-      databaseReachable: await testDatabaseConnection(db),
-      redisReachable: true,
-      workerHeartbeatAgeSeconds: 15,
-      pokemonCacheEntries: memoryCache.size,
-      csaMode: config.CSA_INTEGRATION_MODE,
-      queueSummary: [],
+      statusService,
     }),
   );
 
@@ -174,6 +177,7 @@ async function main(): Promise<void> {
   shutdownManager.register("queues", async () => {
     await Promise.all([
       queues.spawnAlerts.close(),
+      queues.spawnDelivery.close(),
       queues.maintenance.close(),
       queues.usageAggregation.close(),
     ]);
@@ -197,6 +201,7 @@ async function main(): Promise<void> {
   }
 
   await discordClient.login(config.DISCORD_TOKEN);
+  statusService.setDiscordReady(true);
   metrics.discordReady.set(1);
 
   if (config.DISCORD_COMMAND_REGISTRATION_MODE === "guild" && config.DISCORD_DEV_GUILD_ID) {
@@ -218,6 +223,88 @@ async function checkFileExists(path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export interface StatusService {
+  setDiscordReady: (ready: boolean) => void;
+  getDiscordReady: () => boolean;
+  getDatabaseReachable: () => Promise<boolean>;
+  getRedisReachable: () => Promise<boolean>;
+  getWorkerHeartbeatAgeSeconds: () => Promise<number | null>;
+  getPokemonCacheEntries: () => number;
+  getSnapshot: () => SpawnSnapshot | null;
+  getSnapshotStatus: () => {
+    loaded: boolean;
+    generatedAt: string | null;
+    ageSeconds: number | null;
+    entryCount: number | null;
+  };
+  getCsaMode: () => string;
+  getServerAddress: () => string;
+  getSiteUrl: () => string | undefined;
+  getQueueSummary: () => Promise<
+    Array<{ queue: string; waiting: number; active: number; failed: number }>
+  >;
+  getAppVersion: () => string;
+}
+
+function createStatusService(params: {
+  db: ReturnType<typeof createDatabaseClient>["db"];
+  redisClient: Redis;
+  queues: ReturnType<typeof createQueues>;
+  memoryCache: InMemoryTtlCache;
+  snapshotStore: SnapshotStore;
+  config: ReturnType<typeof parseEnv>;
+}): StatusService {
+  const state = { discordReady: false };
+  return {
+    setDiscordReady: (ready: boolean) => {
+      state.discordReady = ready;
+    },
+    getDiscordReady: () => state.discordReady,
+    getDatabaseReachable: () => testDatabaseConnection(params.db),
+    getRedisReachable: async () => {
+      try {
+        await params.redisClient.ping();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    getWorkerHeartbeatAgeSeconds: async () => {
+      try {
+        const keys = await params.redisClient.keys(
+          `${params.config.REDIS_KEY_PREFIX}heartbeat:worker:*`,
+        );
+        if (keys.length === 0) return null;
+        let latest = 0;
+        for (const key of keys) {
+          const v = await params.redisClient.get(key);
+          if (v) {
+            const ts = Number.parseInt(v, 10);
+            if (ts > latest) latest = ts;
+          }
+        }
+        if (latest === 0) return null;
+        return Math.floor((Date.now() - latest) / 1000);
+      } catch {
+        return null;
+      }
+    },
+    getPokemonCacheEntries: () => params.memoryCache.size,
+    getSnapshot: () => params.snapshotStore.current ?? null,
+    getSnapshotStatus: () => ({
+      loaded: params.snapshotStore.isLoaded,
+      generatedAt: params.snapshotStore.current?.generatedAt ?? null,
+      ageSeconds: params.snapshotStore.ageSeconds,
+      entryCount: params.snapshotStore.current?.entryCount ?? null,
+    }),
+    getCsaMode: () => params.config.CSA_INTEGRATION_MODE,
+    getServerAddress: () => params.config.BIGMONCRAFT_SERVER_ADDRESS,
+    getSiteUrl: () => params.config.BIGMONCRAFT_SITE_URL,
+    getQueueSummary: () => getQueueMetrics(params.queues),
+    getAppVersion: () => params.config.APP_VERSION,
+  };
 }
 
 main().catch((error) => {

@@ -23,6 +23,10 @@ export const envSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   HOST: z.string().default("0.0.0.0"),
   PORT: positiveInt.default(3000),
+  TRUSTED_PROXY_ADDRESSES: z
+    .string()
+    .optional()
+    .transform((val) => (val ? val.split(/[,\s]+/).filter(Boolean) : undefined)),
   SHUTDOWN_TIMEOUT_MS: positiveInt.default(15000),
 
   DISCORD_TOKEN: z.string().min(1).optional(),

@@ -1,11 +1,19 @@
-import { safeTokenCompare, sha256Hex, stableStringify } from "@bigbangcraft/domain";
-import { validateCsaPayload, parseCidrList, isAllowed } from "@bigbangcraft/csa-integration";
+import { sha256Hex, stableStringify, safeTokenCompare } from "@bigbangcraft/domain";
 import type { AppLogger } from "@bigbangcraft/observability";
 import type { DatabaseClient } from "@bigbangcraft/database";
-import { createIntegrationEvent, findSourceByKey } from "@bigbangcraft/database";
+import {
+  ensureIntegrationSource,
+  createIntegrationEvent,
+} from "@bigbangcraft/database";
 import type { QueueSet } from "@bigbangcraft/queue";
 import { JOB_NAMES } from "@bigbangcraft/queue";
 import type { SpawnDedupService } from "@bigbangcraft/csa-integration";
+import {
+  validateCsaPayload,
+  normalizeCsaEvent,
+  parseCidrList,
+  isAllowed,
+} from "@bigbangcraft/csa-integration";
 import type { AppConfig } from "@bigbangcraft/config";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 
@@ -83,34 +91,38 @@ export function registerCsaRoutes(
           .send({ error: { code: validation.code, message: validation.message } });
       }
 
+      const source = await ensureIntegrationSource(db, {
+        sourceKey: config.BIGMONCRAFT_SERVER_ID,
+        displayName: config.BIGMONCRAFT_SERVER_NAME,
+        serverId: config.BIGMONCRAFT_SERVER_ID,
+        tokenHash: config.CSA_SOURCE_TOKEN
+          ? sha256Hex(config.CSA_SOURCE_TOKEN)
+          : undefined,
+      });
+
+      if (!source.enabled) {
+        return reply
+          .status(403)
+          .send({ error: { code: "CSA_SOURCE_DISABLED", message: "Fonte de integração desabilitada." } });
+      }
+
+      const normalized = normalizeCsaEvent(validation.payload, {
+        sourceVersion: config.CSA_EXPECTED_SOURCE_VERSION ?? "1.13.2",
+        serverId: config.BIGMONCRAFT_SERVER_ID,
+      });
+
+      const acquired = await dedupService.acquire(normalized);
+      if (!acquired) {
+        logger.debug("Evento CSA duplicado — ignorado.");
+        return reply.status(200).send();
+      }
+
       const requestId = crypto.randomUUID();
       const sanitizedPayload = sanitizePayloadForStorage(validation.payload);
       const fingerprint = sha256Hex(stableStringify(sanitizedPayload));
 
-      const isDuplicate = await dedupService.isDuplicate({
-        source: "csa",
-        serverId: config.BIGMONCRAFT_SERVER_ID,
-        receivedAt: new Date().toISOString(),
-        bucket: extractBucket(validation.payload),
-      });
-
-      if (isDuplicate) {
-        logger.debug({ requestId, fingerprint }, "Evento CSA duplicado — ignorado.");
-        return reply.status(200).send();
-      }
-
-      await dedupService.markDuplicate({
-        source: "csa",
-        serverId: config.BIGMONCRAFT_SERVER_ID,
-        receivedAt: new Date().toISOString(),
-        bucket: extractBucket(validation.payload),
-      });
-
-      const source = await findSourceByKey(db, config.BIGMONCRAFT_SERVER_ID);
-      const sourceId = source?.id ?? "00000000-0000-0000-0000-000000000000";
-
       const event = await createIntegrationEvent(db, {
-        sourceId,
+        sourceId: source.id,
         requestId,
         fingerprint,
         sanitizedPayload,
@@ -142,12 +154,4 @@ function sanitizePayloadForStorage(payload: Record<string, unknown>): Record<str
     );
   }
   return copy;
-}
-
-function extractBucket(payload: Record<string, unknown>): string | undefined {
-  if (typeof payload.content === "string") {
-    const match = /bucket=([^|]+)/.exec(payload.content);
-    if (match && match[1]) return match[1].trim();
-  }
-  return undefined;
 }

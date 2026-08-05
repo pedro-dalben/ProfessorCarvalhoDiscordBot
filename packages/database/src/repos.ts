@@ -14,6 +14,53 @@ export async function findSourceByKey(
   return rows[0] ?? null;
 }
 
+export async function ensureIntegrationSource(
+  db: DatabaseClient,
+  params: {
+    sourceKey: string;
+    displayName: string;
+    serverId: string;
+    tokenHash?: string;
+  },
+): Promise<typeof integrationSources.$inferSelect> {
+  const existing = await findSourceByKey(db, params.sourceKey);
+  if (existing) {
+    const updates: Record<string, unknown> = {
+      updatedAt: new Date(),
+      lastSeenAt: new Date(),
+    };
+    if (params.tokenHash && existing.tokenHash !== params.tokenHash) {
+      updates.tokenHash = params.tokenHash;
+    }
+    if (params.serverId && existing.serverId !== params.serverId) {
+      updates.serverId = params.serverId;
+    }
+    const result = await db
+      .update(integrationSources)
+      .set(updates)
+      .where(eq(integrationSources.id, existing.id))
+      .returning();
+    return result[0] ?? existing;
+  }
+  const result = await db
+    .insert(integrationSources)
+    .values({
+      sourceKey: params.sourceKey,
+      displayName: params.displayName,
+      integrationType: "csa",
+      enabled: true,
+      tokenHash: params.tokenHash,
+      serverId: params.serverId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastSeenAt: new Date(),
+    })
+    .returning();
+  const row = result[0];
+  if (!row) throw new Error("Falha ao criar fonte de integração.");
+  return row;
+}
+
 export async function createIntegrationEvent(
   db: DatabaseClient,
   data: {
@@ -74,6 +121,17 @@ export async function checkFingerprintExists(
   return rows.length > 0;
 }
 
+export async function findSpawnEventByIntegrationEventId(
+  db: DatabaseClient,
+  integrationEventId: string,
+): Promise<typeof spawnEvents.$inferSelect | null> {
+  const rows = await db
+    .select()
+    .from(spawnEvents)
+    .where(eq(spawnEvents.integrationEventId, integrationEventId))
+    .limit(1);
+  return rows[0] ?? null;
+}
 export async function createSpawnEvent(
   db: DatabaseClient,
   data: {
