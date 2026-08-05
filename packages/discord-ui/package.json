@@ -18,6 +18,6 @@
     "@bigbangcraft/cobblemon-data": "workspace:*",
     "@bigbangcraft/domain": "workspace:*",
     "@bigbangcraft/pokemon-data": "workspace:*",
-    "discord.js": "latest"
+    "discord.js": "^14.27.0"
   }
 }

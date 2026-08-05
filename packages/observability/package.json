@@ -15,7 +15,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "pino": "latest",
-    "prom-client": "latest"
+    "pino": "^10.3.1",
+    "prom-client": "^15.1.3"
   }
 }

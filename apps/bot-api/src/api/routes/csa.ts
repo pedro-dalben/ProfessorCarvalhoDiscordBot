@@ -1,10 +1,7 @@
 import { sha256Hex, stableStringify, safeTokenCompare } from "@bigbangcraft/domain";
 import type { AppLogger } from "@bigbangcraft/observability";
 import type { DatabaseClient } from "@bigbangcraft/database";
-import {
-  ensureIntegrationSource,
-  createIntegrationEvent,
-} from "@bigbangcraft/database";
+import { ensureIntegrationSource, createIntegrationEvent } from "@bigbangcraft/database";
 import type { QueueSet } from "@bigbangcraft/queue";
 import { JOB_NAMES } from "@bigbangcraft/queue";
 import type { SpawnDedupService } from "@bigbangcraft/csa-integration";
@@ -95,15 +92,13 @@ export function registerCsaRoutes(
         sourceKey: config.BIGMONCRAFT_SERVER_ID,
         displayName: config.BIGMONCRAFT_SERVER_NAME,
         serverId: config.BIGMONCRAFT_SERVER_ID,
-        tokenHash: config.CSA_SOURCE_TOKEN
-          ? sha256Hex(config.CSA_SOURCE_TOKEN)
-          : undefined,
+        tokenHash: config.CSA_SOURCE_TOKEN ? sha256Hex(config.CSA_SOURCE_TOKEN) : undefined,
       });
 
       if (!source.enabled) {
-        return reply
-          .status(403)
-          .send({ error: { code: "CSA_SOURCE_DISABLED", message: "Fonte de integração desabilitada." } });
+        return reply.status(403).send({
+          error: { code: "CSA_SOURCE_DISABLED", message: "Fonte de integração desabilitada." },
+        });
       }
 
       const normalized = normalizeCsaEvent(validation.payload, {

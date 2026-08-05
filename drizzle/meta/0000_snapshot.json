@@ -342,12 +342,8 @@
           "name": "integration_events_source_id_integration_sources_id_fk",
           "tableFrom": "integration_events",
           "tableTo": "integration_sources",
-          "columnsFrom": [
-            "source_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -435,9 +431,7 @@
         "integration_sources_source_key_unique": {
           "name": "integration_sources_source_key_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "source_key"
-          ]
+          "columns": ["source_key"]
         }
       },
       "policies": {},
@@ -592,12 +586,8 @@
           "name": "spawn_events_integration_event_id_integration_events_id_fk",
           "tableFrom": "spawn_events",
           "tableTo": "integration_events",
-          "columnsFrom": [
-            "integration_event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["integration_event_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

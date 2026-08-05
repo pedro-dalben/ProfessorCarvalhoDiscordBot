@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@bigbangcraft/domain": "workspace:*",
-    "bullmq": "latest",
-    "ioredis": "latest"
+    "bullmq": "^6.0.7",
+    "ioredis": "^6.0.0"
   }
 }

@@ -93,9 +93,9 @@ export const spawnEvents = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (table) => ({
-    integrationEventUnique: uniqueIndex(
-      "spawn_events_integration_event_id_unique",
-    ).on(table.integrationEventId),
+    integrationEventUnique: uniqueIndex("spawn_events_integration_event_id_unique").on(
+      table.integrationEventId,
+    ),
   }),
 );
 

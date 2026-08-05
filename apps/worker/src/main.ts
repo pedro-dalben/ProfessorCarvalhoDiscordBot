@@ -74,7 +74,10 @@ function main(): void {
 
       const existing = await findSpawnEventByIntegrationEventId(db, eventId);
       if (existing) {
-        logger.info({ eventId }, "spawn_events já existe para este integration_event — idempotente.");
+        logger.info(
+          { eventId },
+          "spawn_events já existe para este integration_event — idempotente.",
+        );
         await markEventProcessed(db, eventId);
         return;
       }
@@ -193,13 +196,12 @@ function main(): void {
           bucket: spawnRow?.bucket ?? undefined,
           biome: spawnRow?.biome ?? undefined,
           dimension: spawnRow?.dimension ?? undefined,
-          coordinates:
-            spawnRow?.coordinateRegion
-              ? {
-                  x: parseCoordinate(spawnRow.coordinateRegion, "x"),
-                  z: parseCoordinate(spawnRow.coordinateRegion, "z"),
-                }
-              : undefined,
+          coordinates: spawnRow?.coordinateRegion
+            ? {
+                x: parseCoordinate(spawnRow.coordinateRegion, "x"),
+                z: parseCoordinate(spawnRow.coordinateRegion, "z"),
+              }
+            : undefined,
         },
         { coordinatePolicy, regionGridSize, showNearestPlayer, serverAddress },
       );
@@ -229,7 +231,10 @@ function main(): void {
         logger.info({ channelId, spawnEventId }, "Alerta de spawn entregue no Discord.");
       } catch (error) {
         metrics.spawnAlertFailedTotal.labels("discord-error", "delivery").inc();
-        logger.error({ err: error, channelId, spawnEventId }, "Falha ao entregar alerta no Discord.");
+        logger.error(
+          { err: error, channelId, spawnEventId },
+          "Falha ao entregar alerta no Discord.",
+        );
         throw error;
       }
     },

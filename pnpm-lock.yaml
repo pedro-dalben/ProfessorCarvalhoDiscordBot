@@ -9,43 +9,43 @@ importers:
   .:
     devDependencies:
       '@eslint/js':
-        specifier: latest
+        specifier: ^10.0.1
         version: 10.0.1(eslint@10.8.0(supports-color@10.2.2))
       '@types/node':
-        specifier: latest
+        specifier: ^26.1.2
         version: 26.1.2
       '@vitest/coverage-v8':
-        specifier: latest
+        specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)
       concurrently:
-        specifier: latest
+        specifier: ^10.0.4
         version: 10.0.4
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
       eslint:
-        specifier: latest
+        specifier: ^10.8.0
         version: 10.8.0(supports-color@10.2.2)
       eslint-config-prettier:
-        specifier: latest
+        specifier: ^10.1.8
         version: 10.1.8(eslint@10.8.0(supports-color@10.2.2))
       globals:
-        specifier: latest
+        specifier: ^17.9.0
         version: 17.9.0
       prettier:
-        specifier: latest
+        specifier: ^3.9.6
         version: 3.9.6
       tsx:
-        specifier: latest
+        specifier: ^4.23.5
         version: 4.23.5
       typescript:
-        specifier: ~5.9.0
+        specifier: ~5.9.3
         version: 5.9.3
       typescript-eslint:
-        specifier: latest
+        specifier: ^8.66.0
         version: 8.66.0(eslint@10.8.0(supports-color@10.2.2))(supports-color@10.2.2)(typescript@5.9.3)
       vitest:
-        specifier: latest
+        specifier: ^4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.5)(yaml@2.9.0))
 
   apps/bot-api:
@@ -78,32 +78,32 @@ importers:
         specifier: workspace:*
         version: link:../../packages/queue
       '@fastify/helmet':
-        specifier: latest
+        specifier: ^13.1.0
         version: 13.1.0
       '@fastify/rate-limit':
-        specifier: latest
+        specifier: ^11.2.0
         version: 11.2.0
       discord.js:
-        specifier: latest
+        specifier: ^14.27.0
         version: 14.27.0
       dotenv:
-        specifier: latest
+        specifier: ^17.4.2
         version: 17.4.2
       fastify:
-        specifier: latest
+        specifier: ^5.11.2
         version: 5.11.2
       ioredis:
-        specifier: latest
+        specifier: ^6.0.0
         version: 6.0.0(supports-color@10.2.2)
       zod:
-        specifier: latest
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@testcontainers/postgresql':
-        specifier: latest
+        specifier: ^12.1.0
         version: 12.1.0(supports-color@10.2.2)
       testcontainers:
-        specifier: latest
+        specifier: ^12.1.0
         version: 12.1.0(supports-color@10.2.2)
 
   apps/worker:
@@ -136,44 +136,44 @@ importers:
         specifier: workspace:*
         version: link:../../packages/queue
       '@discordjs/rest':
-        specifier: latest
+        specifier: ^2.6.3
         version: 2.6.3
       bullmq:
-        specifier: latest
+        specifier: ^6.0.7
         version: 6.0.7(ioredis@6.0.0(supports-color@10.2.2))(pg@8.22.0)
       discord-api-types:
-        specifier: latest
+        specifier: ^0.38.52
         version: 0.38.52
       discord.js:
-        specifier: latest
+        specifier: ^14.27.0
         version: 14.27.0
       dotenv:
-        specifier: latest
+        specifier: ^17.4.2
         version: 17.4.2
       ioredis:
-        specifier: latest
+        specifier: ^6.0.0
         version: 6.0.0(supports-color@10.2.2)
       zod:
-        specifier: latest
+        specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
       '@testcontainers/postgresql':
-        specifier: latest
+        specifier: ^12.1.0
         version: 12.1.0(supports-color@10.2.2)
       testcontainers:
-        specifier: latest
+        specifier: ^12.1.0
         version: 12.1.0(supports-color@10.2.2)
 
   packages/cobblemon-data:
     dependencies:
       zod:
-        specifier: latest
+        specifier: ^4.4.3
         version: 4.4.3
 
   packages/config:
     dependencies:
       zod:
-        specifier: latest
+        specifier: ^4.4.3
         version: 4.4.3
 
   packages/csa-integration:
@@ -182,7 +182,7 @@ importers:
         specifier: workspace:*
         version: link:../domain
       zod:
-        specifier: latest
+        specifier: ^4.4.3
         version: 4.4.3
 
   packages/database:
@@ -191,14 +191,14 @@ importers:
         specifier: workspace:*
         version: link:../domain
       drizzle-orm:
-        specifier: latest
+        specifier: ^0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.4)(pg@8.22.0)
       pg:
-        specifier: latest
+        specifier: ^8.22.0
         version: 8.22.0
     devDependencies:
       '@types/pg':
-        specifier: latest
+        specifier: ^8.20.4
         version: 8.20.4
 
   packages/discord-ui:
@@ -213,7 +213,7 @@ importers:
         specifier: workspace:*
         version: link:../pokemon-data
       discord.js:
-        specifier: latest
+        specifier: ^14.27.0
         version: 14.27.0
 
   packages/domain: {}
@@ -221,10 +221,10 @@ importers:
   packages/observability:
     dependencies:
       pino:
-        specifier: latest
+        specifier: ^10.3.1
         version: 10.3.1
       prom-client:
-        specifier: latest
+        specifier: ^15.1.3
         version: 15.1.3
 
   packages/pokemon-data:
@@ -233,7 +233,7 @@ importers:
         specifier: workspace:*
         version: link:../domain
       zod:
-        specifier: latest
+        specifier: ^4.4.3
         version: 4.4.3
 
   packages/queue:
@@ -242,10 +242,10 @@ importers:
         specifier: workspace:*
         version: link:../domain
       bullmq:
-        specifier: latest
+        specifier: ^6.0.7
         version: 6.0.7(ioredis@6.0.0(supports-color@10.2.2))(pg@8.22.0)
       ioredis:
-        specifier: latest
+        specifier: ^6.0.0
         version: 6.0.0(supports-color@10.2.2)
 
   packages/testing:

@@ -16,6 +16,6 @@
   },
   "dependencies": {
     "@bigbangcraft/domain": "workspace:*",
-    "zod": "latest"
+    "zod": "^4.4.3"
   }
 }

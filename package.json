@@ -37,18 +37,18 @@
     "security:audit": "pnpm audit --prod"
   },
   "devDependencies": {
-    "@eslint/js": "latest",
-    "@types/node": "latest",
-    "@vitest/coverage-v8": "latest",
-    "concurrently": "latest",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.1.2",
+    "@vitest/coverage-v8": "^4.1.10",
+    "concurrently": "^10.0.4",
     "drizzle-kit": "^0.31.10",
-    "eslint": "latest",
-    "eslint-config-prettier": "latest",
-    "globals": "latest",
-    "prettier": "latest",
-    "tsx": "latest",
-    "typescript": "~5.9.0",
-    "typescript-eslint": "latest",
-    "vitest": "latest"
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.9.0",
+    "prettier": "^3.9.6",
+    "tsx": "^4.23.5",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^4.1.10"
   }
 }

@@ -82,10 +82,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const cacheStore: KeyValueStore = new RedisKeyValueStore(
-    redisClient,
-    config.REDIS_KEY_PREFIX,
-  );
+  const cacheStore: KeyValueStore = new RedisKeyValueStore(redisClient, config.REDIS_KEY_PREFIX);
   const memoryCache = new InMemoryTtlCache(512);
   const rawClient = new PokeApiClient({
     baseUrl: config.POKEAPI_BASE_URL,

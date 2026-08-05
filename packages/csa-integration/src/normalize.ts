@@ -43,6 +43,8 @@ export function normalizeCsaEvent(
   let description = "";
   if (Array.isArray(payload.embeds) && payload.embeds[0]?.description) {
     description = payload.embeds[0].description;
+  } else if (typeof payload.content === "string") {
+    description = payload.content;
   }
 
   return {
