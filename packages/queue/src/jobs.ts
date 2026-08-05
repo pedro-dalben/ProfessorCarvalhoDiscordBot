@@ -24,7 +24,7 @@ export function buildDefaultJobOptions(): DefaultJobOptions {
   const attempts = Number.parseInt(process.env.QUEUE_DEFAULT_ATTEMPTS ?? "5", 10);
   const backoffMs = Number.parseInt(process.env.QUEUE_DEFAULT_BACKOFF_MS ?? "2000", 10);
   // timeoutMs reserved for future job options configuration
-  void (Number.parseInt(process.env.QUEUE_JOB_TIMEOUT_MS ?? "15000", 10));
+  void Number.parseInt(process.env.QUEUE_JOB_TIMEOUT_MS ?? "15000", 10);
 
   return {
     attempts: Number.isFinite(attempts) ? attempts : 5,

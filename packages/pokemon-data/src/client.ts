@@ -229,10 +229,7 @@ export class PokeApiClient implements PokemonProvider {
     );
   }
 
-  private async fetchOnce<T>(
-    url: string,
-    schema: ZodType<T>,
-  ): Promise<FetchOutcome<T>> {
+  private async fetchOnce<T>(url: string, schema: ZodType<T>): Promise<FetchOutcome<T>> {
     const response = await this.fetchImpl(url, {
       signal: AbortSignal.timeout(this.options.timeoutMs),
       headers: {

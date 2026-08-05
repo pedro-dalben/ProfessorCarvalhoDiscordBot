@@ -200,9 +200,15 @@ importers:
 
   packages/discord-ui:
     dependencies:
+      '@bigbangcraft/cobblemon-data':
+        specifier: workspace:*
+        version: link:../cobblemon-data
       '@bigbangcraft/domain':
         specifier: workspace:*
         version: link:../domain
+      '@bigbangcraft/pokemon-data':
+        specifier: workspace:*
+        version: link:../pokemon-data
       discord.js:
         specifier: latest
         version: 14.27.0
@@ -241,9 +247,15 @@ importers:
 
   packages/testing:
     dependencies:
+      '@bigbangcraft/csa-integration':
+        specifier: workspace:*
+        version: link:../csa-integration
       '@bigbangcraft/domain':
         specifier: workspace:*
         version: link:../domain
+      '@bigbangcraft/pokemon-data':
+        specifier: workspace:*
+        version: link:../pokemon-data
 
 packages:
 

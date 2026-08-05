@@ -17,10 +17,7 @@ import {
   type CleanupExpiredEventsPayload,
 } from "@bigbangcraft/queue";
 import { Worker, type Job } from "bullmq";
-import {
-  normalizeCsaEvent,
-  type CsaWebhookPayload,
-} from "@bigbangcraft/csa-integration";
+import { normalizeCsaEvent, type CsaWebhookPayload } from "@bigbangcraft/csa-integration";
 import { buildSpawnAlertEmbed } from "@bigbangcraft/discord-ui";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v10";

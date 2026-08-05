@@ -59,25 +59,21 @@ export function registerCsaRoutes(
 
       const contentType = request.headers["content-type"] ?? "";
       if (!contentType.includes("application/json")) {
-        return reply
-          .status(415)
-          .send({
-            error: {
-              code: "CSA_INVALID_PAYLOAD",
-              message: "Content-Type deve ser application/json.",
-            },
-          });
+        return reply.status(415).send({
+          error: {
+            code: "CSA_INVALID_PAYLOAD",
+            message: "Content-Type deve ser application/json.",
+          },
+        });
       }
 
       let rawBody: unknown;
       try {
         rawBody = request.body;
       } catch {
-        return reply
-          .status(400)
-          .send({
-            error: { code: "CSA_INVALID_PAYLOAD", message: "Corpo da requisição inválido." },
-          });
+        return reply.status(400).send({
+          error: { code: "CSA_INVALID_PAYLOAD", message: "Corpo da requisição inválido." },
+        });
       }
 
       const validation = validateCsaPayload(rawBody);

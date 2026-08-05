@@ -15,7 +15,9 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@bigbangcraft/cobblemon-data": "workspace:*",
     "@bigbangcraft/domain": "workspace:*",
+    "@bigbangcraft/pokemon-data": "workspace:*",
     "discord.js": "latest"
   }
 }
