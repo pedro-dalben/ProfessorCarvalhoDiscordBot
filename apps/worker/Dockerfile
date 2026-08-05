@@ -5,23 +5,8 @@ RUN addgroup --system --gid 1001 professor && adduser --system --uid 1001 --gid 
 
 FROM base AS builder
 ENV CI=true
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY tsconfig.json tsconfig.base.json ./
-COPY packages/config/package.json packages/config/
-COPY packages/domain/package.json packages/domain/
-COPY packages/observability/package.json packages/observability/
-COPY packages/pokemon-data/package.json packages/pokemon-data/
-COPY packages/cobblemon-data/package.json packages/cobblemon-data/
-COPY packages/csa-integration/package.json packages/csa-integration/
-COPY packages/discord-ui/package.json packages/discord-ui/
-COPY packages/database/package.json packages/database/
-COPY packages/queue/package.json packages/queue/
-COPY packages/testing/package.json packages/testing/
-COPY apps/worker/package.json apps/worker/
-RUN corepack enable && pnpm install --frozen-lockfile
-COPY packages/ packages/
-COPY apps/ apps/
-RUN pnpm --filter @bigbangcraft/professor-carvalho-worker run build
+COPY . .
+RUN corepack enable && pnpm install --frozen-lockfile && pnpm --filter @bigbangcraft/professor-carvalho-worker run build
 
 FROM base AS runner
 COPY --from=builder /app/node_modules /app/node_modules
