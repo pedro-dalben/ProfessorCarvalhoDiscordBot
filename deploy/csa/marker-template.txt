@@ -1,0 +1,1 @@
+PC_CSA_V1|dex={dex_unformatted}|lvl={level_unformatted}|x={x}|y={y}|z={z}|biome={biome_unformatted}|bucket={bucket_unformatted}|shiny={shiny_unformatted}|leg={legendary_unformatted}|myth={mythical_unformatted}|ub={ultrabeast_unformatted}|par={paradox_unformatted}|ha={hidden_ability_unformatted}|name={name}|player={nearest_player_unformatted}|ts={timestamp}

@@ -1,0 +1,24 @@
+{
+  "configVersion": "1.13.2",
+  "comment": [
+    "Configuração do Professor Carvalho para o servidor BigMonCraft.",
+    "Ative sendWebhook para enviar alertas globais para o relay do Professor Carvalho.",
+    "https://stainlessstasis.github.io/CSA-Docs/config/"
+  ],
+  "enableSpawnCommandAlerts": false,
+  "alertShinies": true,
+  "broadcastShiny": true,
+  "alertLegendaries": true,
+  "alertMythicals": true,
+  "alertUltraBeasts": true,
+  "alertParadox": true,
+  "alertStarters": false,
+  "alertHiddenAbility": true,
+  "bucketsToAlert": ["ULTRA_RARE"],
+  "broadcastBucket": true,
+  "broadcastIVs": true,
+  "broadcastEVs": true,
+  "broadcastNature": true,
+  "broadcastAbility": true,
+  "sendWebhook": true
+}
