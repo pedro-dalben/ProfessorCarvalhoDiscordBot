@@ -1,0 +1,32 @@
+{
+  "name": "@bigbangcraft/professor-carvalho-bot-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@bigbangcraft/cobblemon-data": "workspace:*",
+    "@bigbangcraft/config": "workspace:*",
+    "@bigbangcraft/csa-integration": "workspace:*",
+    "@bigbangcraft/database": "workspace:*",
+    "@bigbangcraft/discord-ui": "workspace:*",
+    "@bigbangcraft/domain": "workspace:*",
+    "@bigbangcraft/observability": "workspace:*",
+    "@bigbangcraft/pokemon-data": "workspace:*",
+    "@bigbangcraft/queue": "workspace:*",
+    "@fastify/helmet": "latest",
+    "@fastify/rate-limit": "latest",
+    "discord.js": "latest",
+    "dotenv": "latest",
+    "fastify": "latest",
+    "ioredis": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "latest",
+    "testcontainers": "latest"
+  }
+}
