@@ -1,0 +1,139 @@
+export const PT_BR = {
+  character: {
+    name: "Professor Carvalho",
+    description: "O pesquisador oficial do BigMonCraft.",
+    loading: "Deixe-me consultar minhas anotações…",
+    unavailable:
+      "O Professor Carvalho está reorganizando suas anotações. Tente novamente em alguns instantes.",
+  },
+
+  commands: {
+    dex: {
+      name: "dex",
+      description: "Consulta as informações de um Pokémon na Pokédex do Professor Carvalho.",
+      optionPokemonName: "Nome do Pokémon que você deseja consultar.",
+      title: "Pokédex do Professor Carvalho",
+      notFound: "Não encontrei esse Pokémon na minha Pokédex. Confira o nome e tente novamente.",
+      footer: "Pokédex externa via PokéAPI",
+    },
+    fraquezas: {
+      name: "fraquezas",
+      description: "Mostra as fraquezas, resistências e imunidades de um Pokémon.",
+      optionPokemonName: "Nome do Pokémon que você deseja consultar.",
+      title: "Efetividade de tipos",
+      subtitle: "Fraquezas, resistências e imunidades de",
+      groups: {
+        4: "4× de dano",
+        2: "2× de dano",
+        1: "Dano normal",
+        0.5: "½× de dano",
+        0.25: "¼× de dano",
+        0: "Imune",
+      },
+    },
+    spawn: {
+      name: "spawn",
+      description: "Consulta onde e em quais condições um Pokémon pode aparecer no BigMonCraft.",
+      optionPokemonName: "Nome do Pokémon que você deseja consultar.",
+      title: "Pesquisa de campo:",
+      notFound:
+        "Não localizei informações de spawn para este Pokémon nos registros do BigMonCraft.",
+      snapshotUnavailable:
+        "Os dados de spawn do BigMonCraft ainda não estão disponíveis. A equipe precisa atualizar a base de pesquisas do Professor Carvalho.",
+      footer: "BigMonCraft • Pesquisa de campo",
+      manifestFooter: "Snapshot gerado em",
+    },
+    ajuda: {
+      name: "ajuda",
+      description: "Mostra tudo o que o Professor Carvalho pode fazer.",
+      title: "Central de pesquisa do Professor Carvalho",
+      descriptionPrefix:
+        "Olá, treinador! Sou o Professor Carvalho, pesquisador oficial do **BigMonCraft**.\n\nAqui estão os comandos disponíveis:",
+      commandList: [
+        { name: "/dex <pokémon>", value: "Consulta informações detalhadas de um Pokémon." },
+        { name: "/fraquezas <pokémon>", value: "Mostra fraquezas, resistências e imunidades." },
+        { name: "/spawn <pokémon>", value: "Verifica onde um Pokémon aparece no BigMonCraft." },
+        { name: "/status-professor", value: "Exibe o estado dos serviços de pesquisa." },
+        { name: "/ajuda", value: "Exibe esta mensagem." },
+      ],
+      privacyNote:
+        "Por padrão, as coordenadas exatas dos Pokémon são ocultas para preservar a experiência de exploração.",
+      serverAddress: "Servidor: {address}",
+      siteLabel: "Site: {url}",
+      dataFreshness: "Dados de spawn atualizados em {date}.",
+    },
+    status: {
+      name: "status-professor",
+      description: "Mostra o estado dos serviços e da base de pesquisas do Professor Carvalho.",
+      title: "Status do Professor Carvalho",
+      online: "Online",
+      offline: "Indisponível",
+      labels: {
+        bot: "Bot Discord",
+        database: "Banco de dados",
+        redis: "Redis",
+        workerHeartbeat: "Worker (último sinal)",
+        pokemonCache: "Cache Pokémon",
+        spawnSnapshot: "Snapshot de spawns",
+        spawnSnapshotGenerated: "Gerado em",
+        spawnSnapshotAge: "Idade",
+        csaMode: "Modo CSA",
+        queueStatus: "Filas",
+        version: "Versão",
+      },
+      notLoaded: "Não carregado",
+    },
+  },
+
+  errors: {
+    generic: "Não consegui concluir essa consulta. Código de referência: {code}",
+    providerUnavailable:
+      "A Pokédex externa está temporariamente indisponível. Tente novamente em alguns instantes.",
+    permissionDenied: "Você não tem permissão para usar este comando.",
+    commandCooldown: "Aguarde alguns segundos antes de executar este comando novamente.",
+  },
+
+  spawnAlert: {
+    shinyTitle: "✨ Um Pokémon shiny apareceu!",
+    legendaryTitle: "🚨 Um Pokémon extremamente raro apareceu!",
+    rareTitle: "🔎 O Professor Carvalho detectou um Pokémon raro!",
+    standardTitle: "📡 Alerta de spawn",
+    fields: {
+      pokemon: "Pokémon",
+      level: "Nível",
+      rarity: "Raridade",
+      biome: "Bioma",
+      dimension: "Dimensão",
+      specialCondition: "Condição especial",
+      region: "Região aproximada",
+    },
+    footer: "BigMonCraft • Radar do Professor Carvalho",
+    hiddenAbilityLabel: "Habilidade oculta",
+  },
+
+  pokemon: {
+    labels: {
+      types: "Tipo",
+      abilities: "Habilidades",
+      hiddenAbility: "Habilidade oculta",
+      baseStats: "Estatísticas base",
+      hp: "PS",
+      attack: "Ataque",
+      defense: "Defesa",
+      specialAttack: "Ataque Especial",
+      specialDefense: "Defesa Especial",
+      speed: "Velocidade",
+      height: "Altura",
+      weight: "Peso",
+      evolution: "Evoluções",
+      captureRate: "Taxa de captura",
+      legendary: "Lendário",
+      mythical: "Mítico",
+      ultraBeast: "Ultra Criatura",
+      paradox: "Paradoxo",
+      shiny: "Shiny",
+    },
+    noEvolution: "Não evolui",
+    evolutionSeparator: " → ",
+  },
+} as const;
