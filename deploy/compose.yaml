@@ -32,7 +32,7 @@ services:
 
   bot-api:
     build:
-      context: .
+      context: ..
       dockerfile: apps/bot-api/Dockerfile
     restart: unless-stopped
     environment:
@@ -41,7 +41,7 @@ services:
       - APP_VERSION=${APP_VERSION:-0.1.0}
       - LOG_LEVEL=${LOG_LEVEL:-info}
     env_file:
-      - .env
+      - ../.env
     ports:
       - "127.0.0.1:3080:3000"
     depends_on:
@@ -72,7 +72,7 @@ services:
 
   worker:
     build:
-      context: .
+      context: ..
       dockerfile: apps/worker/Dockerfile
     restart: unless-stopped
     environment:
@@ -81,7 +81,7 @@ services:
       - APP_VERSION=${APP_VERSION:-0.1.0}
       - LOG_LEVEL=${LOG_LEVEL:-info}
     env_file:
-      - .env
+      - ../.env
     depends_on:
       postgres:
         condition: service_healthy

@@ -39,4 +39,5 @@ COPY drizzle/ /app/drizzle/
 USER professor
 ENV NODE_ENV=production
 ENV TZ=America/Sao_Paulo
+CMD ["node", "apps/bot-api/dist/main.js"]
 ENTRYPOINT ["dumb-init", "--"]
