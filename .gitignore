@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment & secrets — NEVER commit
+.env
+.env.*
+!.env.example
+*.secret
+*.pem
+*.key
+
+# Generated data that may contain sensitive server info
+data/generated/*.json
+!data/generated/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Coverage
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+*.swp
+
+# Docker volumes (local)
+pgdata/
+redisdata/
+
+# Testcontainers
+.testcontainers/

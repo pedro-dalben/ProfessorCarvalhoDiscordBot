@@ -1,0 +1,53 @@
+{
+  "name": "@bigbangcraft/professor-carvalho",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Professor Carvalho - assistente oficial do servidor BigMonCraft no Discord",
+  "license": "MIT",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=11.20.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,worker -c blue,green \"pnpm dev:bot-api\" \"pnpm dev:worker\"",
+    "dev:bot-api": "tsx watch apps/bot-api/src/main.ts",
+    "dev:worker": "tsx watch apps/worker/src/main.ts",
+    "build": "pnpm -r --filter './packages/*' --filter './apps/*' run build",
+    "start": "node apps/bot-api/dist/main.js",
+    "start:worker": "node apps/worker/dist/main.js",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm test:unit && pnpm test:integration",
+    "test:unit": "vitest run --exclude \"**/*.int.test.ts\"",
+    "test:integration": "vitest run \"**/*.int.test.ts\" --testTimeout=120000 --hookTimeout=120000",
+    "test:coverage": "vitest run --exclude \"**/*.int.test.ts\" --coverage",
+    "discord:register": "tsx apps/bot-api/src/discord/register.ts",
+    "discord:clear": "tsx apps/bot-api/src/discord/register.ts --clear",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx packages/database/src/migrate.ts",
+    "db:check": "drizzle-kit check",
+    "db:studio": "drizzle-kit studio",
+    "data:import-cobblemon": "tsx packages/cobblemon-data/src/cli.ts",
+    "data:generate-pokemon-index": "tsx scripts/generate-pokemon-index.ts",
+    "secrets:generate": "tsx scripts/secrets-generate.ts",
+    "security:audit": "pnpm audit --prod"
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "@types/node": "latest",
+    "@vitest/coverage-v8": "latest",
+    "concurrently": "latest",
+    "eslint": "latest",
+    "eslint-config-prettier": "latest",
+    "globals": "latest",
+    "prettier": "latest",
+    "tsx": "latest",
+    "typescript": "~5.9.0",
+    "typescript-eslint": "latest",
+    "vitest": "latest"
+  }
+}

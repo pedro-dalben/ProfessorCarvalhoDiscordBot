@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "outDir": null,
+    "paths": {
+      "@bigbangcraft/config": ["./packages/config/src/index.ts"],
+      "@bigbangcraft/database": ["./packages/database/src/index.ts"],
+      "@bigbangcraft/domain": ["./packages/domain/src/index.ts"],
+      "@bigbangcraft/queue": ["./packages/queue/src/index.ts"],
+      "@bigbangcraft/pokemon-data": ["./packages/pokemon-data/src/index.ts"],
+      "@bigbangcraft/cobblemon-data": ["./packages/cobblemon-data/src/index.ts"],
+      "@bigbangcraft/csa-integration": ["./packages/csa-integration/src/index.ts"],
+      "@bigbangcraft/discord-ui": ["./packages/discord-ui/src/index.ts"],
+      "@bigbangcraft/observability": ["./packages/observability/src/index.ts"],
+      "@bigbangcraft/testing": ["./packages/testing/src/index.ts"]
+    }
+  },
+  "include": [
+    "apps/*/src/**/*.ts",
+    "apps/*/test/**/*.ts",
+    "packages/*/src/**/*.ts",
+    "packages/*/test/**/*.ts",
+    "scripts/**/*.ts",
+    "drizzle.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

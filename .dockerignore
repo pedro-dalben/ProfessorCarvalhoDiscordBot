@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/coverage
+**/.git
+**/.env
+**/.env.*
+**/*.secret
+**/*.log
+**/logs
+data/generated
+data/fixtures
+docs
+.github
+.gitignore
+.prettierignore
+*.md
