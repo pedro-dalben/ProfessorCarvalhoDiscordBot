@@ -1,0 +1,39 @@
+server {
+    listen WIREGUARD_PROXY_IP:80;
+    server_name _;
+
+    deny all;
+
+    location /v1/integrations/csa/ {
+        allow MINECRAFT_WIREGUARD_CIDR;
+        deny all;
+
+        client_max_body_size 64k;
+        client_body_timeout 10s;
+        proxy_read_timeout 15s;
+        proxy_connect_timeout 5s;
+        proxy_pass http://127.0.0.1:3080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        access_log off;
+    }
+
+    location /health {
+        allow 127.0.0.1;
+        allow ::1;
+        deny all;
+        proxy_pass http://127.0.0.1:3080;
+        proxy_set_header Host $host;
+    }
+
+    location /metrics {
+        allow 127.0.0.1;
+        allow ::1;
+        deny all;
+        proxy_pass http://127.0.0.1:3080;
+        proxy_set_header Host $host;
+    }
+}
