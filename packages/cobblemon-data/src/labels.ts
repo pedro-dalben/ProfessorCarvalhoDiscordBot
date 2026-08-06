@@ -68,6 +68,13 @@ const PRESET_LABELS_PT: Record<string, string> = {
   swamps: "em pântanos",
   water: "na água",
   cave: "em cavernas",
+  wild: "selvagem",
+  stronghold: "Fortaleza",
+  "nether structures": "estruturas do Nether",
+};
+
+const MOD_LABELS_PT: Record<string, string> = {
+  legendarymonuments: "Legendary Monuments",
 };
 
 function titleCase(value: string): string {
@@ -133,14 +140,22 @@ const BLOCK_LABELS_PT: Record<string, string> = {
 export function humanizeStructurePt(value: string): string {
   const known = STRUCTURE_LABELS_PT[value];
   if (known) return known;
-  const cleaned = value.replace(/^#/, "").split(":").pop()!.replace(/[-_/]+/g, " ");
+  const cleaned = value
+    .replace(/^#/, "")
+    .split(":")
+    .pop()!
+    .replace(/[-_/]+/g, " ");
   return titleCase(cleaned);
 }
 
 export function humanizeBlockPt(value: string): string {
   const known = BLOCK_LABELS_PT[value];
   if (known) return known;
-  const cleaned = value.replace(/^#/, "").split(":").pop()!.replace(/[-_/]+/g, " ");
+  const cleaned = value
+    .replace(/^#/, "")
+    .split(":")
+    .pop()!
+    .replace(/[-_/]+/g, " ");
   return titleCase(cleaned);
 }
 
@@ -148,7 +163,12 @@ function listOrValue(value: unknown): string[] {
   if (Array.isArray(value)) return value.map((item) => String(item));
   if (value === undefined || value === null) return [];
   const scalar = value as string | number | boolean | bigint;
-  if (typeof scalar !== "string" && typeof scalar !== "number" && typeof scalar !== "boolean" && typeof scalar !== "bigint") {
+  if (
+    typeof scalar !== "string" &&
+    typeof scalar !== "number" &&
+    typeof scalar !== "boolean" &&
+    typeof scalar !== "bigint"
+  ) {
     return [];
   }
   return [String(scalar)];
@@ -252,6 +272,10 @@ export function humanizeRarityPt(value: string): string {
 
 export function humanizePresetPt(value: string): string {
   return PRESET_LABELS_PT[value.toLowerCase()] ?? value.replace(/[-_]/g, " ");
+}
+
+export function humanizeModPt(value: string): string {
+  return MOD_LABELS_PT[value.toLowerCase()] ?? value.replace(/[-_]/g, " ").toLowerCase();
 }
 
 function humanizeExtraKey(key: string): string {
@@ -429,9 +453,26 @@ export function describeEntryPt(entry: NormalizedSpawnEntry): SpawnConditionSumm
     }
   }
   if (entry.requiredMods.length > 0)
-    rows.push({ label: "Mods necessários", value: entry.requiredMods.join(", ") });
-  if (entry.excludedMods.length > 0)
-    rows.push({ label: "Mods incompatíveis", value: entry.excludedMods.join(", ") });
+    rows.push({
+      label: "Mods necessários",
+      value: entry.requiredMods.map(humanizeModPt).join(", "),
+    });
+  if (entry.excludedMods.length > 0) {
+    const monuments = entry.excludedMods.includes("legendarymonuments");
+    const otherMods = entry.excludedMods.filter((mod) => mod !== "legendarymonuments");
+    if (monuments) {
+      rows.push({
+        label: "Estruturas",
+        value: "Monumentos lendários (spawn via mod Legendary Monuments)",
+      });
+    }
+    if (otherMods.length > 0) {
+      rows.push({
+        label: "Mods incompatíveis",
+        value: otherMods.map(humanizeModPt).join(", "),
+      });
+    }
+  }
   if (Object.keys(entry.unsupportedFields).length > 0) {
     const extras: string[] = [];
     for (const [key, value] of Object.entries(entry.unsupportedFields)) {
