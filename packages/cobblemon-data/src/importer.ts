@@ -257,7 +257,7 @@ function normalizeConditions(condition: RawSpawnCondition | undefined): Normaliz
     timeRanges: toArray(condition.timeRange ?? condition.timeRanges),
     weathers: toArray(condition.weather ?? condition.weathers),
     moonPhases: toArray(condition.moonPhase ?? condition.moonPhases),
-    extra,
+    extra: {},
   };
   if (condition.minSkyLight !== undefined || condition.maxSkyLight !== undefined) {
     result.skyLight = { minimum: condition.minSkyLight, maximum: condition.maxSkyLight };
@@ -269,6 +269,7 @@ function normalizeConditions(condition: RawSpawnCondition | undefined): Normaliz
   if (condition.canSeeSky !== undefined) result.needsSeeSky = condition.canSeeSky;
   if (condition.maxDepth !== undefined) result.maxDepth = condition.maxDepth;
   if (condition.minDepth !== undefined) result.minDepth = condition.minDepth;
+  result.extra = extra;
   return result;
 }
 
