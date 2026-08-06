@@ -10,6 +10,11 @@ export interface SpawnSnapshotAccess {
   getSnapshot(): SpawnSnapshot | null;
 }
 
+/** Compara nomes ignorando hífens/espaços (ex.: "Ho-Oh" == "hooh", "Wo-Chien" == "wochien"). */
+function looseSpeciesKey(value: string): string {
+  return value.toLowerCase().replace(/[-_ ]+/g, "");
+}
+
 export async function handleSpawnCommand(
   interaction: ChatInputCommandInteraction,
   snapshotAccess: SpawnSnapshotAccess,
@@ -28,7 +33,10 @@ export async function handleSpawnCommand(
   }
 
   const normalized = normalizeName(query);
-  const entries = snapshot.entries.filter((entry) => entry.pokemon === normalized);
+  const queryKey = looseSpeciesKey(normalized);
+  const entries = snapshot.entries.filter(
+    (entry) => looseSpeciesKey(entry.pokemon) === queryKey,
+  );
 
   if (entries.length === 0) {
     await replyError(interaction, PT_BR.commands.spawn.notFound);
