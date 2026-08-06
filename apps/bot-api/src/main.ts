@@ -1,4 +1,5 @@
 import "dotenv/config";
+import path from "node:path";
 
 import { parseEnv } from "@bigbangcraft/config";
 import { createLogger, createMetrics, ShutdownManager } from "@bigbangcraft/observability";
@@ -113,7 +114,10 @@ async function main(): Promise<void> {
 
   let ranker: AutocompleteRanker;
   try {
-    const indexPath = process.env.AUTOCOMPLETE_INDEX_PATH ?? "./data/generated/pokemon-index.json";
+    const indexPath = path.resolve(
+      process.cwd(),
+      process.env.AUTOCOMPLETE_INDEX_PATH ?? "data/generated/pokemon-index.json",
+    );
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- dynamic JSON import cannot be typed at compile time
     const { default: indexData } = await import(indexPath, { with: { type: "json" } });
     const index = loadAutocompleteIndex(indexData);
@@ -136,6 +140,7 @@ async function main(): Promise<void> {
     store: dedupStore,
     windowSeconds: config.CSA_DEDUP_WINDOW_SECONDS,
     keyPrefix: config.REDIS_KEY_PREFIX,
+    onRedisFailure: config.CSA_DEDUP_FAIL_OPEN ? "fail-open" : "fail-closed",
   });
 
   const statusService = createStatusService({

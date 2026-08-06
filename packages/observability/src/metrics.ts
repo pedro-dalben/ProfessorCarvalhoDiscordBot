@@ -11,6 +11,9 @@ export interface ProfessorMetrics {
   csaEventReceivedTotal: Counter<string>;
   csaEventRejectedTotal: Counter<string>;
   csaEventDuplicateTotal: Counter<string>;
+  csaParseFailureTotal: Counter<string>;
+  csaQueueFailureTotal: Counter<string>;
+  csaLastEventTimestamp: Gauge<string>;
   spawnAlertDeliveredTotal: Counter<string>;
   spawnAlertFailedTotal: Counter<string>;
   queueWaiting: Gauge<string>;
@@ -91,6 +94,21 @@ export function createMetrics(options: {
       name: "professor_csa_event_duplicate_total",
       help: "Eventos CSA duplicados suprimidos",
       labelNames: ["server"],
+      registers: [registry],
+    }),
+    csaParseFailureTotal: new Counter({
+      name: "professor_csa_parse_failure_total",
+      help: "Eventos CSA rejeitados por falha de parsing do marcador PC_CSA_V1",
+      registers: [registry],
+    }),
+    csaQueueFailureTotal: new Counter({
+      name: "professor_csa_queue_failure_total",
+      help: "Eventos CSA que não puderam ser enfileirados ou persistidos",
+      registers: [registry],
+    }),
+    csaLastEventTimestamp: new Gauge({
+      name: "professor_csa_last_event_timestamp",
+      help: "Timestamp do último evento CSA aceito",
       registers: [registry],
     }),
     spawnAlertDeliveredTotal: new Counter({

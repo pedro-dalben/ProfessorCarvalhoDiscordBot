@@ -47,7 +47,7 @@ export async function createServer(
 
   registerHealthRoutes(app, { db, queues, config });
   registerMetricsRoutes(app, { metrics, config });
-  registerCsaRoutes(app, { config, logger, db, queues, dedupService });
+  registerCsaRoutes(app, { config, logger, db, queues, dedupService, metrics });
 
   app.setErrorHandler((error, _request, reply) => {
     logger.error({ err: error }, "Erro não tratado em rota HTTP.");
