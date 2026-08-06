@@ -14,26 +14,40 @@ export async function findSourceByKey(
   return rows[0] ?? null;
 }
 
+export interface EnsureSourceParams {
+  sourceKey: string;
+  displayName: string;
+  serverId: string;
+  integrationType: string;
+  expectedVersion?: string;
+  tokenHash?: string;
+}
+
+/**
+ * Cria a fonte de integração quando ausente e atualiza metadados quando
+ * presente. Idempotente e seguro sob concorrência (INSERT ON CONFLICT DO
+ * NOTHING seguido de re-seleção).
+ *
+ * O hash do token nunca é impresso em logs nem retornado como dado sensível.
+ */
 export async function ensureIntegrationSource(
   db: DatabaseClient,
-  params: {
-    sourceKey: string;
-    displayName: string;
-    serverId: string;
-    tokenHash?: string;
-  },
+  params: EnsureSourceParams,
 ): Promise<typeof integrationSources.$inferSelect> {
   const existing = await findSourceByKey(db, params.sourceKey);
   if (existing) {
-    const updates: Record<string, unknown> = {
-      updatedAt: new Date(),
-      lastSeenAt: new Date(),
-    };
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (params.tokenHash && existing.tokenHash !== params.tokenHash) {
       updates.tokenHash = params.tokenHash;
     }
     if (params.serverId && existing.serverId !== params.serverId) {
       updates.serverId = params.serverId;
+    }
+    if (params.integrationType && existing.integrationType !== params.integrationType) {
+      updates.integrationType = params.integrationType;
+    }
+    if (params.expectedVersion && existing.expectedVersion !== params.expectedVersion) {
+      updates.expectedVersion = params.expectedVersion;
     }
     const result = await db
       .update(integrationSources)
@@ -42,23 +56,34 @@ export async function ensureIntegrationSource(
       .returning();
     return result[0] ?? existing;
   }
-  const result = await db
+
+  await db
     .insert(integrationSources)
     .values({
       sourceKey: params.sourceKey,
       displayName: params.displayName,
-      integrationType: "csa",
+      integrationType: params.integrationType,
       enabled: true,
       tokenHash: params.tokenHash,
       serverId: params.serverId,
+      expectedVersion: params.expectedVersion,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSeenAt: new Date(),
     })
-    .returning();
-  const row = result[0];
+    .onConflictDoNothing({ target: integrationSources.sourceKey });
+
+  const row = await findSourceByKey(db, params.sourceKey);
   if (!row) throw new Error("Falha ao criar fonte de integração.");
   return row;
+}
+
+/** Atualiza `last_seen_at` após requisições válidas. Não revela o token. */
+export async function touchSourceLastSeen(db: DatabaseClient, sourceId: string): Promise<void> {
+  await db
+    .update(integrationSources)
+    .set({ lastSeenAt: new Date() })
+    .where(eq(integrationSources.id, sourceId));
 }
 
 export async function createIntegrationEvent(
@@ -70,6 +95,7 @@ export async function createIntegrationEvent(
     eventType?: string;
     schemaVersion?: string;
     sanitizedPayload?: unknown;
+    normalizedPayload?: unknown;
   },
 ) {
   const result = await db
@@ -81,11 +107,31 @@ export async function createIntegrationEvent(
       eventType: data.eventType ?? "spawn",
       schemaVersion: data.schemaVersion,
       sanitizedPayload: data.sanitizedPayload,
+      normalizedPayload: data.normalizedPayload,
       status: "received",
       receivedAt: new Date(),
     })
     .returning();
   return result[0] ?? null;
+}
+
+export async function findIntegrationEventById(
+  db: DatabaseClient,
+  eventId: string,
+): Promise<typeof integrationEvents.$inferSelect | null> {
+  const rows = await db
+    .select()
+    .from(integrationEvents)
+    .where(eq(integrationEvents.id, eventId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function markEventProcessing(db: DatabaseClient, eventId: string) {
+  await db
+    .update(integrationEvents)
+    .set({ status: "processing" })
+    .where(eq(integrationEvents.id, eventId));
 }
 
 export async function markEventProcessed(db: DatabaseClient, eventId: string) {
@@ -132,6 +178,15 @@ export async function findSpawnEventByIntegrationEventId(
     .limit(1);
   return rows[0] ?? null;
 }
+
+export async function findSpawnEventById(
+  db: DatabaseClient,
+  spawnEventId: string,
+): Promise<typeof spawnEvents.$inferSelect | null> {
+  const rows = await db.select().from(spawnEvents).where(eq(spawnEvents.id, spawnEventId)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function createSpawnEvent(
   db: DatabaseClient,
   data: {
@@ -175,8 +230,65 @@ export async function createSpawnEvent(
       coordinateRegion: data.coordinateRegion,
       occurredAt: data.occurredAt ?? new Date(),
     })
+    .onConflictDoNothing({ target: spawnEvents.integrationEventId })
     .returning();
   return result[0] ?? null;
+}
+
+/**
+ * Reivindicação atômica da entrega Discord.
+ * Retorna a linha apenas se a entrega ainda não foi concluída nem está em
+ * andamento; uma retry do BullMQ só re-envia quando o estado anterior era
+ * `pending` ou `failed`.
+ */
+export async function claimSpawnDelivery(
+  db: DatabaseClient,
+  spawnEventId: string,
+): Promise<typeof spawnEvents.$inferSelect | null> {
+  const rows = await db
+    .update(spawnEvents)
+    .set({
+      deliveryStatus: "delivering",
+      deliveryAttempts: sql`${spawnEvents.deliveryAttempts} + 1`,
+    })
+    .where(
+      and(
+        eq(spawnEvents.id, spawnEventId),
+        sql`${spawnEvents.deliveryStatus} NOT IN ('delivered', 'delivering')`,
+      ),
+    )
+    .returning();
+  return rows[0] ?? null;
+}
+
+export async function markSpawnDelivered(
+  db: DatabaseClient,
+  spawnEventId: string,
+  discordMessageId: string,
+): Promise<void> {
+  await db
+    .update(spawnEvents)
+    .set({
+      deliveryStatus: "delivered",
+      discordMessageId,
+      deliveredAt: new Date(),
+      lastDeliveryError: null,
+    })
+    .where(eq(spawnEvents.id, spawnEventId));
+}
+
+export async function markSpawnDeliveryFailed(
+  db: DatabaseClient,
+  spawnEventId: string,
+  errorMessage: string,
+): Promise<void> {
+  await db
+    .update(spawnEvents)
+    .set({
+      deliveryStatus: "failed",
+      lastDeliveryError: errorMessage.slice(0, 1000),
+    })
+    .where(eq(spawnEvents.id, spawnEventId));
 }
 
 export async function cleanupExpiredEvents(

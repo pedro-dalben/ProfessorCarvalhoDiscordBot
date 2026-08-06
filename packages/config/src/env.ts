@@ -83,6 +83,9 @@ export const envSchema = z.object({
     .default(() => ""),
   CSA_BODY_LIMIT_BYTES: positiveInt.default(65536),
   CSA_DEDUP_WINDOW_SECONDS: positiveInt.default(90),
+  CSA_DEDUP_FAIL_OPEN: boolFromString.default(() => true),
+  CSA_RATE_LIMIT_MAX: positiveInt.default(60),
+  CSA_RATE_LIMIT_WINDOW_SECONDS: positiveInt.default(60),
   CSA_STORE_SANITIZED_PAYLOAD_DAYS: positiveInt.default(14),
   CSA_EXPECTED_SOURCE_VERSION: z.string().optional(),
 
