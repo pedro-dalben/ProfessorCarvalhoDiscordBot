@@ -139,11 +139,11 @@ export async function handleUnlinkCommand(
   }
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`professor:unlink:confirm:${interaction.user.id}`)
+      .setCustomId(`professor:unlink:confirm:${interaction.user.id}:${Date.now() + 300_000}`)
       .setLabel(PT_BR.identity.unlink.confirm)
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
-      .setCustomId(`professor:unlink:cancel:${interaction.user.id}`)
+      .setCustomId(`professor:unlink:cancel:${interaction.user.id}:${Date.now() + 300_000}`)
       .setLabel(PT_BR.identity.unlink.cancel)
       .setStyle(ButtonStyle.Secondary),
   );
@@ -160,7 +160,7 @@ export async function handleIdentityButton(
   interaction: ButtonInteraction,
   deps: IdentityDeps,
 ): Promise<void> {
-  const [prefix, action, command, targetUserId] = interaction.customId.split(":");
+  const [prefix, action, command, targetUserId, expiry] = interaction.customId.split(":");
   if (
     prefix !== "professor" ||
     action !== "unlink" ||
@@ -168,6 +168,14 @@ export async function handleIdentityButton(
     targetUserId !== interaction.user.id
   )
     return;
+  if (!expiry || !Number.isSafeInteger(Number(expiry)) || Number(expiry) < Date.now()) {
+    await interaction.update({
+      content: "Esta confirmação expirou. Execute /desvincular novamente.",
+      components: [],
+      allowedMentions: { parse: [] },
+    });
+    return;
+  }
   if (command === "cancel") {
     await interaction.update({
       content: "Desvinculação cancelada.",

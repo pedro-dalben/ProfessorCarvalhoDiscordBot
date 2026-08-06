@@ -11,7 +11,7 @@ export function isValidLinkCode(value: string): boolean {
 }
 
 export function generateLinkCode(): string {
-  const bytes = randomBytes(5);
+  const bytes = randomBytes(8);
   let suffix = "";
   for (const byte of bytes) suffix += ALPHABET[byte % ALPHABET.length];
   return `CARVALHO-${suffix}`;
