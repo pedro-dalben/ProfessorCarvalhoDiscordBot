@@ -1,5 +1,7 @@
 **/dist
 **/node_modules
+**/*.orphan-root/**
+**/.pnpm-store/**
 **/coverage
 data/generated
 pnpm-lock.yaml

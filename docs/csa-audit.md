@@ -1,145 +1,160 @@
 # Auditoria do JAR: Cobblemon Spawn Alerts 1.13.2 (Fabric)
 
-**Data da auditoria**: 2026-08-05
-**Auditor**: Professor Carvalho MVP — fase 1
-**Local do JAR**: `/home/pedro/.var/app/com.modrinth.ModrinthApp/data/ModrinthApp/profiles/BigMonCraft - Cobblemon Pack/mods/cobblemon_spawn_alerts-fabric-1.13.2.jar` (cópia local — o JAR em produção está em `/home/brainiac/bigbangcraft/bigmoncraft/mods/cobblemon_spawn_alerts-fabric-1.13.2.jar`)
-**Validação**: Binário inspecionado com `unzip -l`, `unzip -p`, `javap -c -p -constants`, `sha256sum`, e comparação com documentação oficial em https://stainlessstasis.github.io/CSA-Docs/.
+**Data da auditoria**: 2026-08-05 (revalidada em 2026-08-05, branch `fix/csa-1.13.2-integration`)
+**Método**: inspeção read-only com `sha256sum`, `unzip -l`, `unzip -p`, `javap -c -p -constants` em diretório temporário (`/tmp/opencode/csa-audit/`). Nenhum arquivo foi extraído no diretório de produção do Minecraft.
 
-## 1. Identificação do artefato
+**JAR de produção (esperado)**: `/home/brainiac/bigbangcraft/bigmoncraft/mods/cobblemon_spawn_alerts-fabric-1.13.2.jar` — **não acessível a partir desta máquina de desenvolvimento** (proxy VPS separado). A auditoria foi feita sobre a cópia local:
 
-| Campo       | Valor                                                              |
-| ----------- | ------------------------------------------------------------------ |
-| Arquivo     | `cobblemon_spawn_alerts-fabric-1.13.2.jar`                         |
-| SHA-256     | `35bd1cd3491922199c83fceff270949d38b88732b297e5a3a22d596031304010` |
-| Mod ID      | `cobblemon_spawn_alerts`                                           |
-| Versão      | `1.13.2`                                                           |
-| Minecraft   | `1.21.1` (Fabric)                                                  |
-| Cobblemon   | `>=1.7.0` (servidor BigMonCraft: 1.7.3)                            |
-| Autor       | Stasis, the Shattered                                              |
-| Licença     | MIT                                                                |
-| CurseForge  | Project ID 1295053, File ID 7722424                                |
-| Repositório | https://github.com/StainlessStasis/CobblemonSpawnAlerts            |
-| Tamanho     | 2.966.173 bytes                                                    |
-
-## 2. Dependências embutidas
-
-- Jackson (com.fasterxml.jackson.core): annotations, core, databind
-- `com.n1netails:n1netails-discord-webhook-client` (versão 0.3.0)
-- Architectury (injeção common/dev)
-- Ember's Text API `>=2.5.0`
-
-## 3. Comportamento HTTP (webhook)
-
-**Fonte**: `com.n1netails.n1netails.discord.service.WebhookService.send()`
-
-| Característica | Valor confirmado                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------- |
-| Método HTTP    | `POST`                                                                                       |
-| Destino        | `new URL(webhookURL)` — **qualquer URL HTTP/HTTPS aceita**, sem validação de domínio Discord |
-| Content-Type   | `application/json`                                                                           |
-| Timeouts       | **Nenhum configurado** (depende do SO; Java padrão: infinito)                                |
-| Tentativas     | **Nenhuma** — falha é apenas logada                                                          |
-| Cabeçalhos     | Apenas `Content-Type`; sem `User-Agent`, sem `Authorization`                                 |
-| Corpo          | Serialização Jackson do `WebhookMessage` (content, username, avatar_url, tts, embeds)        |
-| Sucesso        | HTTP **200** ou **204**                                                                      |
-| Resposta       | Corpo da resposta **ignorado** completamente                                                 |
-
-**Conclusão**: **Modo Relay (Modo A) é compatível.** O CSA aceita enviar POST para qualquer URL, incluindo um endpoint interno via WireGuard.
-
-## 4. Threading
-
-**Fonte**: `io.github.stainlessstasis.compat.DiscordWebhookService.sendWebhook()`
-
-O envio do webhook é despachado via `CompletableFuture.runAsync()`, que utiliza o **ForkJoinPool comum**. **Nunca bloqueia a thread principal do Minecraft.**
-
-Erros são capturados e logados via SLF4J; nunca causam crash.
-
-## 5. Fluxo de alerta (servidor)
-
-1. Cobblemon dispara `POKEMON_ENTITY_SPAWN`
-2. `CobblemonSpawnAlerts.initServer` → `FabricPlatformHelper.onPokemonSpawned(entity, bucket)`
-3. Agendamento com **0,5s de delay** (Cobblemon ScheduledTask)
-4. Tarefa agendada:
-   - Envia `PokemonDataPacket` para jogadores próximos (tracking)
-   - `AlertUtils.shouldGlobalAlert(entity, bucket)` avalia `ServerConfig`
-   - Se for alerta global: adiciona UUID ao conjunto `globallyAlerted` (dedup servidor)
-   - Se `sendWebhook: true`: `DiscordWebhookService.sendWebhook(alertData, null)`
-   - Broadcast `AlertDataPacket` para todos os jogadores online
-
-## 6. Seleção de alertas globais (ServerConfig)
-
-| Campo                      | Valor padrão (vem do mod) | Comportamento                                           |
-| -------------------------- | ------------------------- | ------------------------------------------------------- |
-| `enableSpawnCommandAlerts` | `false`                   | `/pokespawn` não gera alertas por padrão                |
-| `alertShinies`             | `true`                    | Alerta shinies                                          |
-| `broadcastShiny`           | `true`                    | Broadcast do status shiny                               |
-| `alertLegendaries`         | `true`                    | Alerta lendários                                        |
-| `alertMythicals`           | `true`                    | Alerta míticos                                          |
-| `alertUltraBeasts`         | `true`                    | Alerta Ultra Beasts                                     |
-| `alertParadox`             | `true`                    | Alerta Paradox                                          |
-| `alertStarters`            | `false`                   | Iniciais não alertados por padrão                       |
-| `alertHiddenAbility`       | `false`                   | Hidden Ability não alertada por padrão                  |
-| `bucketsToAlert`           | `["ULTRA_RARE"]`          | Apenas bucket ULTRA_RARE                                |
-| `sendWebhook`              | `false`                   | Webhook desabilitado por padrão (ativar no BigMonCraft) |
-
-## 7. Dados disponíveis nos alertas
-
-**Fonte**: `AlertDataPacket` → `PokemonSpawnData`, `PokemonStats`, `PokemonRarityData`, `PokemonTraits`
-
-| Campo                | Fonte                                  | Observação                             |
-| -------------------- | -------------------------------------- | -------------------------------------- |
-| Nome da espécie      | `PokemonSpawnData.pokemonName`         | Traduzido pelo Cobblemon               |
-| UUID                 | `PokemonSpawnData.pokemonUUID`         | Usado para dedup no servidor           |
-| Posição (x, y, z)    | `PokemonSpawnData.position` (Vector3f) | Coordenadas float                      |
-| Número da Dex        | `PokemonSpawnData.dexId`               | Inteiro                                |
-| Jogador mais próximo | `PokemonSpawnData.nearestPlayerName`   | Nome do jogador                        |
-| Bioma                | `PokemonSpawnData.biomeKey`            | BiomeKey Minecraft                     |
-| Dimensão             | `PokemonSpawnData.dimensionKey`        | **Não tem placeholder de webhook**     |
-| Bucket               | `PokemonSpawnData.bucket`              | Enum (ULTRA_RARE, RARE, etc.)          |
-| Nível                | `PokemonStats.level`                   | Inteiro                                |
-| IVs                  | `PokemonStats.ivs`                     | 6 valores (HP/Atk/Def/SpAtk/SpDef/Spd) |
-| EVs                  | `PokemonStats.evYield`                 | 6 valores                              |
-| Nature               | `PokemonTraits.natureID`               | String                                 |
-| Ability              | `PokemonTraits.abilityID`              | String                                 |
-| Gênero               | `PokemonTraits.genderID`               | String                                 |
-| Forma                | `PokemonTraits.formID`                 | String                                 |
-| Shiny                | `PokemonRarityData.isShiny`            | Booleano                               |
-| Lendário             | `PokemonRarityData.isLegendary`        | Booleano                               |
-| Mítico               | `PokemonRarityData.isMythical`         | Booleano                               |
-| Ultra Beast          | `PokemonRarityData.isUltraBeast`       | Booleano                               |
-| Paradox              | `PokemonRarityData.isParadox`          | Booleano                               |
-| Starter              | `PokemonRarityData.isStarter`          | Booleano                               |
-
-## 8. Placeholders dinâmicos confirmados
-
-**Fonte**: `DynamicReplacements` + `ServerMessageTemplates`
-
-Placeholders disponíveis no webhook (templates `{...}` no `webhooks.json`):
-
-`{name}`, `{name_lower}`, `{name_upper}`, `{dex}`, `{level}`, `{ivs}`, `{evs}`, `{nature}`, `{ability}`, `{gender}`, `{coords}`, `{x}`, `{y}`, `{z}`, `{biome}`, `{nearest_player}`, `{shiny}`, `{legendary}`, `{mythical}`, `{ultrabeast}`, `{paradox}`, `{hidden_ability}`/`{HA}`, `{bucket}`/`{rarity}`, `{timestamp}`, `{despawned}`
-
-Variantes: `{..._unformatted}` (sem markup, texto puro), `{..._hover}` (texto para tooltip).
-
-**Placeholders desconhecidos são substituídos por `"N/A"`.**
-
-## 9. Marcador PC_CSA_V1
-
-Template machine-readable inserido no campo `content` do webhook para o Modo Relay:
-
-```
-PC_CSA_V1|dex={dex_unformatted}|lvl={level_unformatted}|x={x}|y={y}|z={z}|biome={biome_unformatted}|bucket={bucket_unformatted}|shiny={shiny_unformatted}|leg={legendary_unformatted}|myth={mythical_unformatted}|ub={ultrabeast_unformatted}|par={paradox_unformatted}|ha={hidden_ability_unformatted}|name={name}|player={nearest_player_unformatted}|ts={timestamp}
+```text
+/home/pedro/.var/app/com.modrinth.ModrinthApp/data/ModrinthApp/profiles/BigMonCraft - Cobblemon Pack/mods/cobblemon_spawn_alerts-fabric-1.13.2.jar
 ```
 
-## 10. Segurança
+## 1. SHA-256
 
-- **URL arbitrária**: CSA não restringe para discord.com — qualquer endpoint HTTP/HTTPS é aceito
-- **Sem TLS próprio**: Se a URL for HTTP (não HTTPS), o tráfego é em texto puro. **Mitigação**: WireGuard (rede privada)
-- **Sem autenticação nativa**: CSA não envia cabeçalhos de autenticação. **Mitigação**: token no path + CIDR allowlist + IP privado
-- **Sem timeouts**: Conexões podem ficar pendentes indefinidamente. **Mitigação**: Nginx com proxy_read_timeout curto
-- **Sem retry**: Se o relay falhar, o alerta é perdido. **Mitigação**: broadcast in-game continua funcionando; documentado como limitação do Modo A
+Cópia local: `35bd1cd3491922199c83fceff270949d38b88732b297e5a3a22d596031304010` (confirmado).
 
-## 11. Verdict da auditoria
+> **Ação obrigatória antes de qualquer instalação em produção**: recalcular o hash do JAR de produção
+> (`sha256sum /home/brainiac/bigbangcraft/bigmoncraft/mods/cobblemon_spawn_alerts-fabric-1.13.2.jar`)
+> e comparar com o valor acima. Se divergir, a auditoria deve ser refeita.
 
-**Modo A (relay interno) é compatível e recomendado.** O CSA 1.13.2 aceita POST JSON para qualquer URL, responde a 200/204, e processa de forma assíncrona (não bloqueia o servidor Minecraft). O Modo B (webhook Discord direto) é documentado como fallback.
+## 2. Identificação (fabric.mod.json)
 
-**Riscos aceitos**: sem retry no CSA (perda de alerta se relay estiver down), sem timeouts configuráveis no lado CSA, sem autenticação nativa (mitigado por WireGuard + token no path + CIDR).
+| Campo            | Valor                                           |
+| ---------------- | ----------------------------------------------- |
+| Mod ID           | `cobblemon_spawn_alerts`                        |
+| Versão           | `1.13.2`                                        |
+| Minecraft        | `1.21.1`                                        |
+| Cobblemon        | `>=1.7.0`                                       |
+| Ember's Text API | `>=2.5.0` (dependência obrigatória no servidor) |
+| Autor            | Stasis, the Shattered                           |
+| Licença          | MIT                                             |
+| Tamanho          | 2.966.173 bytes                                 |
+
+Dependências embutidas (shaded no JAR): Jackson (annotations/core/databind), `com.n1netails:n1netails-discord-webhook-client` 0.3.0, Architectury, Ember's Text API.
+
+## 3. Diretório de configuração (confirmado no bytecode)
+
+`AbstractConfigManager.<clinit>` resolve `FabricLoader.getConfigDir()` + `cobblemon-spawn-alerts`:
+
+```text
+config/cobblemon-spawn-alerts/
+```
+
+**Arquivos comuns (servidor)**, carregados por `CommonConfigManager`:
+
+- `server.json`
+- `server_message_templates.json`
+- `rarities.json`
+- `webhooks.json`
+
+## 4. Comando de reload (confirmado no bytecode)
+
+`CommandRegistry.registerCommonCommands`: literal `csa-common` → subcomando `reload`.
+
+```text
+/csa-common reload
+```
+
+- **Permissão**: in-game requer nível 3 (`hasPermissionLevel(3)`); console do servidor sempre permitido.
+- **O que recarrega**: `CommonConfigManager.loadConfig()` — `server.json`, `server_message_templates.json`, `rarities.json` e `webhooks.json`. **Configs do cliente NÃO são recarregadas por este comando.**
+- **Reinício**: não é necessário para alterações nesses 4 arquivos.
+- **Sucesso**: `[CSA] Common configs reloaded!` (broadcast).
+- **Falha**: `[CSA] Common configs reload failed.`
+- **Sem permissão (in-game)**: `You do not have permission to use this command!`
+
+> Atenção: documentações anteriores citavam `/cobblemonspawnalerts reload` — **não existe**. O comando verificado é `/csa-common reload`.
+
+## 5. Comportamento HTTP do webhook (confirmado no bytecode)
+
+Fonte: `com.n1netails.n1netails.discord.service.WebhookService.send()` (shaded no JAR) + `compat.DiscordWebhookService`.
+
+| Característica     | Valor confirmado                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| Método HTTP        | `POST` (`HttpURLConnection.setRequestMethod("POST")`)                                        |
+| Destino            | `new URL(webhookURL)` — **qualquer URL HTTP/HTTPS**, sem validação de domínio                |
+| Content-Type       | `application/json` (multipart apenas se houver arquivos — nunca no CSA)                      |
+| Cabeçalhos         | Apenas `Content-Type`; sem `User-Agent`, sem `Authorization`                                 |
+| Corpo              | Jackson do `WebhookMessage`: `content`, `username`, `avatar_url`, `tts`, `embeds`            |
+| Códigos de sucesso | **204** ou **200** (verificados nessa ordem)                                                 |
+| Corpo da resposta  | **Ignorado** completamente                                                                   |
+| Timeouts           | **Nenhum** (`setConnectTimeout`/`setReadTimeout` ausentes — Java padrão: infinito)           |
+| Retries            | **Nenhum** — falha é apenas logada via SLF4J                                                 |
+| Falha              | `DiscordWebhookException`/`DiscordWebhookDeliveryException` capturada e logada; nenhum crash |
+
+**Conclusão**: o relay deve responder **204 No Content** (preferido) ou **200**. Corpos grandes são desnecessários.
+
+## 6. Threading
+
+`DiscordWebhookService.sendWebhook()` → `CompletableFuture.runAsync(...)` (ForkJoinPool comum). **Nunca bloqueia a thread principal do Minecraft.** Erros são capturados e logados; não causam crash.
+
+## 7. Fluxo do alerta (servidor)
+
+1. Cobblemon dispara `CobblemonEvents.POKEMON_ENTITY_SPAWN` (assinatura em `CobblemonSpawnAlerts.initServer`, prioridade NORMAL).
+2. `FabricPlatformHelper.onPokemonSpawned(entity, bucket)` agenda `ScheduledTask` com **0,5 s** de delay.
+3. A tarefa cria `AlertDataPacket` e chama `AlertHandler.alert(packet)`:
+   - dedup por UUID no conjunto `alreadyAlerted` (HashSet);
+   - se `shouldGlobalAlert(entity, bucket)` e `sendWebhook` (config da espécie/global): `DiscordWebhookService.sendWebhook(...)`;
+   - broadcast `AlertDataPacket` para todos os jogadores online.
+4. **Despawn**: `POKEMON_CAPTURED` / `BATTLE_FAINTED` → `alertDespawned` → **apenas chat** (mensagem com `{despawned}`). **Não existe webhook de despawn.**
+
+## 8. Seleção de alertas globais (`AlertUtils.shouldGlobalAlert`)
+
+Cadeia OR confirmada no bytecode:
+
+| Condição                          | Flag do `server.json`                       |
+| --------------------------------- | ------------------------------------------- |
+| `pokemon.isShiny()`               | `alertShinies`                              |
+| `pokemon.isLegendary()`           | `alertLegendaries`                          |
+| `pokemon.isMythical()`            | `alertMythicals`                            |
+| `pokemon.isUltraBeast()`          | `alertUltraBeasts`                          |
+| `hasLabels(["paradox"])`          | `alertParadox`                              |
+| `isStarter(dex)`                  | `alertStarters`                             |
+| `hasHiddenAbility(form, ability)` | `alertHiddenAbility`                        |
+| bucket ∈ `bucketsToAlert`         | `bucketsToAlert` (default `["ULTRA_RARE"]`) |
+
+Defaults (`ServerConfig.createDefault()`): `enableSpawnCommandAlerts=false`, `alertShinies=true`, `broadcastShiny=true`, `alertLegendaries=true`, `alertMythicals=true`, `alertUltraBeasts=true`, `alertParadox=true`, `alertStarters=false`, `alertHiddenAbility=false`, `bucketsToAlert=[ULTRA_RARE]`, `broadcastBucket=true`, `broadcastIVs=true`, `broadcastEVs=true`, `broadcastNature=true`, `broadcastAbility=true`, `sendWebhook=false`.
+
+**Buckets** (`RarityUtil.Bucket`): `COMMON`, `UNCOMMON`, `RARE`, `ULTRA_RARE`, `NONE`. O bucket vem do `SpawnPool` do Cobblemon (nome do `SpawnBucket`), com fallback `NONE`.
+
+## 9. Dados do spawn
+
+`PokemonSpawnData` (rede): `pokemonName`, `pokemonUUID`, `position` (Vector3f — floats), `dexId` (int), `nearestPlayerName`, `biomeKey`, `dimensionKey`, `bucket`.
+
+**UUID do Pokémon**: disponível nos dados de rede, mas **NÃO há placeholder de webhook** para ele (enum `Tag` não possui `uuid`).
+
+## 10. Placeholders confirmados (enum `Tag` + `DynamicReplacements`)
+
+Tags: `{dex}`, `{level}`, `{bucket}`/`{rarity}`, `{shiny}`, `{hidden_ability}`/`{HA}`, `{legendary}` (aliases: `{mythical}`, `{ultrabeast}`, `{paradox}`), `{ivs}`, `{evs}`, `{nature}`, `{ability}`, `{gender}`, `{coords}`/`{coordinates}`, `{x}`, `{y}`, `{z}`, `{biome}`, `{nearest_player}`/`{player}`, `{name}`, `{name_lower}`, `{name_upper}`, `{timestamp}`, `{despawned}` (chat).
+
+Variantes `_unformatted` e `_hover` são aplicadas pela mesma tag (o sufixo é removido em `Tag.fromString`).
+
+**Semânticas críticas descobertas na auditoria (diferem da documentação anterior):**
+
+1. **Booleanos não são `true`/`false`.** `{shiny_unformatted}` gera `"Shiny "` (com espaço) quando shiny e `""` quando não. `{legendary_unformatted}` gera **um único valor** entre `"Legendary"`, `"Mythical"`, `"Ultra Beast"`, `"Paradox"` ou `""` — a cadeia if/else do JAR retorna apenas o **primeiro** flag verdadeiro na ordem legendary > mythical > ultrabeast > paradox (via `RarityUtil.isLegendary` etc. por dex, ou `PokemonRarityData` no modo unformatted). Os aliases `{mythical_unformatted}` etc. produzem o MESMO valor único.
+2. **`{timestamp}` = epoch em MILISSEGUNDOS** (`System.currentTimeMillis()`), não segundos.
+3. **`{x}`/`{y}`/`{z}` são inteiros** — o float é truncado via `(int) f2i`; coordenada inválida vira `"N/A"`.
+4. **Placeholder desconhecido é REMOVIDO** (vira string vazia) por `cleanupDynamicReplacements` — não vira `"N/A"`.
+5. `"N/A"` aparece em casos específicos: nature/ability desconhecidos, bucket `NONE`, coordenada inválida, template ausente.
+6. `{name}` usa o nome traduzido pelo Cobblemon (idioma do servidor); `{biome_unformatted}` usa o último segmento da biome key embelezado (ex.: `minecraft:savanna` → `Savanna`).
+7. `{nearest_player_unformatted}` pode vir `null` → `"null"` (formatação `%s`).
+8. Os valores de bucket unformatted são localizados pelas chaves de idioma do CSA (`common`, `uncommon`, `rare`, `ultra_rare`, `bucket_none`) — o JAR embute apenas `en_us.json`.
+
+## 11. Limites
+
+O CSA **não impõe** limites de tamanho de mensagem/embed; aplicam-se os limites da API do Discord (content 2000, embed 4096, fields 25×1024, etc.). O relay deve impor seus próprios limites defensivos.
+
+## 12. Segurança (limitações conhecidas)
+
+- URL arbitrária aceita (qualquer host, sem validação de domínio) — **mitigação**: WireGuard + CIDR allowlist + token no path.
+- Sem autenticação nativa (sem headers de auth) — **mitigação**: token de 32+ bytes no path, comparação em tempo constante.
+- Sem timeouts — **mitigação**: Nginx com timeouts curtos.
+- Sem retry — alerta perdido se o relay estiver indisponível; broadcast in-game continua.
+- Sem TLS próprio — HTTP em texto puro; **mitigação**: tráfego apenas na WireGuard (criptografia de rede).
+- Webhook de despawn não existe.
+- UUID do Pokémon não é exposto ao template de webhook (dedup só por fingerprint).
+
+## 13. Veredito
+
+**Modo A (relay interno) é compatível e recomendado.** O CSA 1.13.2 aceita POST JSON para qualquer URL, responde a 204/200 e processa de forma assíncrona. O Modo B (webhook Discord direto) é documentado como fallback.
+
+**Riscos aceitos**: sem retry no CSA, sem timeouts no lado CSA, sem autenticação nativa (mitigado), despawn sem webhook, UUID indisponível para dedup.

@@ -9,6 +9,8 @@ export default tseslint.config(
     ignores: [
       "**/dist/**",
       "**/node_modules/**",
+      "**/*.orphan-root/**",
+      "**/.pnpm-store/**",
       "**/coverage/**",
       "drizzle/**",
       "drizzle.config.ts",
