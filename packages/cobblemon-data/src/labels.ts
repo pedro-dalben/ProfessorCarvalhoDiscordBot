@@ -119,10 +119,7 @@ const LEGENDARY_MONUMENT_PT: Record<string, string> = {
 };
 
 export function legendaryMonumentPt(pokemon: string): string {
-  return (
-    LEGENDARY_MONUMENT_PT[pokemon.toLowerCase()] ??
-    "Monumento lendário (missão do mod)"
-  );
+  return LEGENDARY_MONUMENT_PT[pokemon.toLowerCase()] ?? "Monumento lendário (missão do mod)";
 }
 
 function titleCase(value: string): string {
