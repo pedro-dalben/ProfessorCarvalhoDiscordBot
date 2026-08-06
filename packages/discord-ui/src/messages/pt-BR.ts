@@ -54,6 +54,9 @@ export const PT_BR = {
         { name: "/fraquezas <pokémon>", value: "Mostra fraquezas, resistências e imunidades." },
         { name: "/spawn <pokémon>", value: "Verifica onde um Pokémon aparece no BigMonCraft." },
         { name: "/status-professor", value: "Exibe o estado dos serviços de pesquisa." },
+        { name: "/vincular", value: "Gera um código seguro para vincular sua conta Minecraft." },
+        { name: "/perfil", value: "Mostra sua ficha de treinador no BigMonCraft." },
+        { name: "/desvincular", value: "Remove a vinculação com o BigMonCraft." },
         { name: "/ajuda", value: "Exibe esta mensagem." },
       ],
       privacyNote:
@@ -80,8 +83,34 @@ export const PT_BR = {
         csaMode: "Modo CSA",
         queueStatus: "Filas",
         version: "Versão",
+        gateway: "Gateway Minecraft",
+        gatewayHeartbeat: "Último heartbeat",
+        gatewayVersion: "Versão do gateway",
+        gatewayPlayers: "Jogadores online",
+        gatewayLinkedPlayers: "Jogadores vinculados online",
+        gatewayQueue: "Eventos pendentes",
+        gatewayDeadLetter: "Dead-letter",
+        gatewayEssentials: "BigBangEssentials",
+        gatewayCobblemon: "Cobblemon",
       },
       notLoaded: "Não carregado",
+    },
+  },
+
+  identity: {
+    link: {
+      name: "vincular",
+      description: "Vincula sua conta do Discord ao seu personagem no BigMonCraft.",
+    },
+    profile: {
+      name: "perfil",
+      description: "Mostra sua ficha de treinador no BigMonCraft.",
+    },
+    unlink: {
+      name: "desvincular",
+      description: "Remove a vinculação entre sua conta do Discord e o BigMonCraft.",
+      confirm: "Confirmar desvinculação",
+      cancel: "Cancelar",
     },
   },
 

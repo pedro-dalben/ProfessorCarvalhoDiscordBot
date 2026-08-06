@@ -130,6 +130,7 @@ describe("e2e CSA 1.13.2 (PostgreSQL + Redis reais via Testcontainers)", () => {
       queues,
       dedupService,
       ranker: {} as never,
+      redisClient,
     });
     const address = await app.listen({ port: 0, host: "127.0.0.1" });
     return {

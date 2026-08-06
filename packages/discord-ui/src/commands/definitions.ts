@@ -42,10 +42,25 @@ export const statusCommand = new SlashCommandBuilder()
   .setName(PT_BR.commands.status.name)
   .setDescription(PT_BR.commands.status.description);
 
+export const linkCommand = new SlashCommandBuilder()
+  .setName(PT_BR.identity.link.name)
+  .setDescription(PT_BR.identity.link.description);
+
+export const profileCommand = new SlashCommandBuilder()
+  .setName(PT_BR.identity.profile.name)
+  .setDescription(PT_BR.identity.profile.description);
+
+export const unlinkCommand = new SlashCommandBuilder()
+  .setName(PT_BR.identity.unlink.name)
+  .setDescription(PT_BR.identity.unlink.description);
+
 export const ALL_SLASH_COMMANDS = [
   dexCommand,
   fraquezasCommand,
   spawnCommand,
   ajudaCommand,
   statusCommand,
+  linkCommand,
+  profileCommand,
+  unlinkCommand,
 ];

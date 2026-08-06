@@ -111,6 +111,18 @@ export const envSchema = z.object({
     .string()
     .optional()
     .default(() => ""),
+  GATEWAY_BODY_LIMIT_BYTES: positiveInt.default(262144),
+  GATEWAY_PROTOCOL_VERSION: z.string().default("1"),
+  GATEWAY_EVENT_RETENTION_DAYS: positiveInt.default(30),
+  GATEWAY_REQUEST_REPLAY_TTL_SECONDS: positiveInt.default(130),
+
+  IDENTITY_LINKING_ENABLED: boolFromString.default(() => false),
+  IDENTITY_LINK_CODE_PEPPER: z.string().min(32).optional(),
+  IDENTITY_LINK_CODE_TTL_SECONDS: positiveInt.default(600),
+  IDENTITY_LINK_CODE_MAX_ATTEMPTS: positiveInt.default(5),
+  IDENTITY_LINK_COMMAND_COOLDOWN_SECONDS: positiveInt.default(60),
+  IDENTITY_PROFILE_STALE_SECONDS: positiveInt.default(600),
+  IDENTITY_PROFILE_VISIBILITY: z.literal("self").default("self"),
 });
 
 export type EnvShape = z.input<typeof envSchema>;
@@ -135,6 +147,8 @@ export function describeConditionalRequirements(): string[] {
     "DISCORD_PRIVATE_SPAWN_ALERT_CHANNEL_ID é obrigatória quando SPAWN_COORDINATE_POLICY=exact_admin_only",
     "METRICS_BEARER_TOKEN é obrigatória quando METRICS_PUBLIC_ACCESS=true",
     "GATEWAY_SHARED_SECRET é obrigatória quando GATEWAY_INGRESS_ENABLED=true",
+    "GATEWAY_ALLOWED_CIDRS é obrigatória em produção quando GATEWAY_INGRESS_ENABLED=true",
+    "IDENTITY_LINK_CODE_PEPPER é obrigatória quando IDENTITY_LINKING_ENABLED=true",
   ];
 }
 
@@ -179,6 +193,18 @@ function applyConditionalRules(config: AppConfig): void {
   }
   if (config.GATEWAY_INGRESS_ENABLED && !config.GATEWAY_SHARED_SECRET) {
     missing.push("GATEWAY_SHARED_SECRET (obrigatória com GATEWAY_INGRESS_ENABLED=true)");
+  }
+  if (
+    config.GATEWAY_INGRESS_ENABLED &&
+    config.NODE_ENV === "production" &&
+    !config.GATEWAY_ALLOWED_CIDRS
+  ) {
+    missing.push(
+      "GATEWAY_ALLOWED_CIDRS (obrigatória em produção com GATEWAY_INGRESS_ENABLED=true)",
+    );
+  }
+  if (config.IDENTITY_LINKING_ENABLED && !config.IDENTITY_LINK_CODE_PEPPER) {
+    missing.push("IDENTITY_LINK_CODE_PEPPER (obrigatória com IDENTITY_LINKING_ENABLED=true)");
   }
   if (missing.length > 0) {
     throw new ConfigValidationError(

@@ -13,10 +13,10 @@ quando o Cobblemon, o datapack do modpack ou o mod **Legendary Monuments** mudar
 
 A integração envolve **dois servidores**, cada um com um papel:
 
-| Servidor | Papel |
-| -------- | ----- |
-| **Servidor Minecraft** (BigMonCraft) | Onde o modpack roda. **Fonte de todos os dados de spawn**: mods e datapacks instalados definem onde cada Pokémon nasce. Nada do bot roda aqui. |
-| **VPS do bot** (Professor Carvalho) | Onde o `bot-api` (Discord + Fastify), o `worker` (BullMQ), PostgreSQL, Redis e Nginx rodam. Recebe o snapshot de spawns, serve o `/spawn` e publica o bot no Discord. |
+| Servidor                             | Papel                                                                                                                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Servidor Minecraft** (BigMonCraft) | Onde o modpack roda. **Fonte de todos os dados de spawn**: mods e datapacks instalados definem onde cada Pokémon nasce. Nada do bot roda aqui.                        |
+| **VPS do bot** (Professor Carvalho)  | Onde o `bot-api` (Discord + Fastify), o `worker` (BullMQ), PostgreSQL, Redis e Nginx rodam. Recebe o snapshot de spawns, serve o `/spawn` e publica o bot no Discord. |
 
 ```
 ┌──────────────────────────┐        transferência do snapshot (tar.gz)
@@ -83,19 +83,19 @@ O mod **Cobblemon: Legendary Monuments** assume o spawn de **61 lendários/míti
 `excludedMods: ["legendarymonuments"]` — ou seja, o spawn padrão é desativado e o
 mod passa a gerar o Pokémon em um **monumento próprio** (estrutura gerada no mundo):
 
-| Pokémon | Monumento (estrutura do mod) |
-| ------- | ---------------------------- |
-| Lugia | `lugia_temple` — Templo de Lugia |
-| Ho-Oh | `traditional_village/ecruteak` — Vila Ecruteak |
-| Mew | `final_island` — Ilha Final |
-| Arceus | `hall_of_origin` — Salão da Origem |
+| Pokémon                | Monumento (estrutura do mod)                                                     |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| Lugia                  | `lugia_temple` — Templo de Lugia                                                 |
+| Ho-Oh                  | `traditional_village/ecruteak` — Vila Ecruteak                                   |
+| Mew                    | `final_island` — Ilha Final                                                      |
+| Arceus                 | `hall_of_origin` — Salão da Origem                                               |
 | Azelf / Mesprit / Uxie | `lake_valor` / `lake_verity` / `lake_acuity` — Lago Valor / Veracidade / Agudeza |
-| Zacian / Zamazenta | `throneroom_of_knightly_heroes` — Sala do Trono dos Heróis |
-| Reshiram / Zekrom | `dragonspiraltower` — Torre Espiral do Dragão |
-| Kyurem | `kyuremcave` — Caverna de Kyurem |
-| Calyrex | `crown_shrine` — Santuário da Coroa |
-| Regigigas | `snowpoint_temple` — Templo de Snowpoint |
-| ... | (mais 20+ monumentos) |
+| Zacian / Zamazenta     | `throneroom_of_knightly_heroes` — Sala do Trono dos Heróis                       |
+| Reshiram / Zekrom      | `dragonspiraltower` — Torre Espiral do Dragão                                    |
+| Kyurem                 | `kyuremcave` — Caverna de Kyurem                                                 |
+| Calyrex                | `crown_shrine` — Santuário da Coroa                                              |
+| Regigigas              | `snowpoint_temple` — Templo de Snowpoint                                         |
+| ...                    | (mais 20+ monumentos)                                                            |
 
 O mapa completo **espécie → monumento** vive no código do bot, em
 `packages/cobblemon-data/src/labels.ts` (constante `LEGENDARY_MONUMENT_PT`).
@@ -280,13 +280,13 @@ curl -s http://127.0.0.1:3080/health/ready  # 200
 
 ## 7. Referências no repositório
 
-| Arquivo | Papel |
-| ------- | ----- |
-| `packages/cobblemon-data/src/cli.ts` | CLI do importador (`pnpm data:import-cobblemon`) |
-| `packages/cobblemon-data/src/importer.ts` | Lógica de extração/normalização dos arquivos de spawn |
-| `packages/cobblemon-data/src/schema.ts` | Tipos do snapshot (`NormalizedSpawnEntry`, `SpawnSnapshot`) |
-| `packages/cobblemon-data/src/labels.ts` | Traduções pt-BR + mapa `LEGENDARY_MONUMENT_PT` |
-| `packages/cobblemon-data/src/store.ts` | Store em memória do snapshot (usada pelo `/spawn`) |
-| `packages/discord-ui/src/commands/spawn.ts` | Comando `/spawn`, agrupamento e embed |
-| `docs/spawn-snapshot-pt-BR.md` | Guia técnico de regeneração do snapshot |
-| `docs/architecture.md` | Arquitetura dos dois servidores |
+| Arquivo                                     | Papel                                                       |
+| ------------------------------------------- | ----------------------------------------------------------- |
+| `packages/cobblemon-data/src/cli.ts`        | CLI do importador (`pnpm data:import-cobblemon`)            |
+| `packages/cobblemon-data/src/importer.ts`   | Lógica de extração/normalização dos arquivos de spawn       |
+| `packages/cobblemon-data/src/schema.ts`     | Tipos do snapshot (`NormalizedSpawnEntry`, `SpawnSnapshot`) |
+| `packages/cobblemon-data/src/labels.ts`     | Traduções pt-BR + mapa `LEGENDARY_MONUMENT_PT`              |
+| `packages/cobblemon-data/src/store.ts`      | Store em memória do snapshot (usada pelo `/spawn`)          |
+| `packages/discord-ui/src/commands/spawn.ts` | Comando `/spawn`, agrupamento e embed                       |
+| `docs/spawn-snapshot-pt-BR.md`              | Guia técnico de regeneração do snapshot                     |
+| `docs/architecture.md`                      | Arquitetura dos dois servidores                             |

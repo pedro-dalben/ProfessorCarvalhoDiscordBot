@@ -4,6 +4,7 @@ import path from "node:path";
 import { parseEnv } from "@bigbangcraft/config";
 import { createLogger, createMetrics, ShutdownManager } from "@bigbangcraft/observability";
 import { createDatabaseClient, testDatabaseConnection } from "@bigbangcraft/database";
+import { findGatewayServer } from "@bigbangcraft/database";
 import { createRedisClient, createQueues, getQueueMetrics } from "@bigbangcraft/queue";
 import {
   PokeApiClient,
@@ -160,6 +161,7 @@ async function main(): Promise<void> {
     queues,
     dedupService,
     ranker,
+    redisClient,
   });
 
   const discordClient = createDiscordClient(logger);
@@ -170,6 +172,7 @@ async function main(): Promise<void> {
       provider,
       ranker,
       statusService,
+      identity: { config, db, redis: redisClient },
     }),
   );
 
@@ -248,6 +251,17 @@ export interface StatusService {
     Array<{ queue: string; waiting: number; active: number; failed: number }>
   >;
   getAppVersion: () => string;
+  getGatewayStatus: () => Promise<{
+    online: boolean;
+    heartbeatAgeSeconds: number | null;
+    gatewayVersion: string | null;
+    onlinePlayers: number | null;
+    linkedPlayersOnline: number | null;
+    spoolPending: number | null;
+    deadLetterCount: number | null;
+    bigBangEssentials: boolean | null;
+    cobblemon: boolean | null;
+  }>;
 }
 
 function createStatusService(params: {
@@ -306,6 +320,47 @@ function createStatusService(params: {
     getSiteUrl: () => params.config.BIGMONCRAFT_SITE_URL,
     getQueueSummary: () => getQueueMetrics(params.queues),
     getAppVersion: () => params.config.APP_VERSION,
+    getGatewayStatus: async () => {
+      const server = await findGatewayServer(params.db, params.config.BIGMONCRAFT_SERVER_ID);
+      if (!server || !server.lastHeartbeatAt) {
+        return {
+          online: false,
+          heartbeatAgeSeconds: null,
+          gatewayVersion: null,
+          onlinePlayers: null,
+          linkedPlayersOnline: null,
+          spoolPending: null,
+          deadLetterCount: null,
+          bigBangEssentials: null,
+          cobblemon: null,
+        };
+      }
+      const payload =
+        server.statusPayload &&
+        typeof server.statusPayload === "object" &&
+        !Array.isArray(server.statusPayload)
+          ? (server.statusPayload as Record<string, unknown>)
+          : {};
+      const age = Math.max(0, Math.floor((Date.now() - server.lastHeartbeatAt.getTime()) / 1000));
+      const modules =
+        payload.modules && typeof payload.modules === "object" && !Array.isArray(payload.modules)
+          ? (payload.modules as Record<string, unknown>)
+          : {};
+      const numberValue = (value: unknown): number | null =>
+        typeof value === "number" && Number.isFinite(value) ? value : null;
+      return {
+        online: age <= 90,
+        heartbeatAgeSeconds: age,
+        gatewayVersion: server.gatewayVersion,
+        onlinePlayers: numberValue(payload.onlinePlayers),
+        linkedPlayersOnline: numberValue(payload.linkedPlayersOnline),
+        spoolPending: numberValue(payload.spoolPending),
+        deadLetterCount: numberValue(payload.deadLetterCount),
+        bigBangEssentials:
+          typeof modules.bigBangEssentials === "boolean" ? modules.bigBangEssentials : null,
+        cobblemon: typeof modules.cobblemon === "boolean" ? modules.cobblemon : null,
+      };
+    },
   };
 }
 
