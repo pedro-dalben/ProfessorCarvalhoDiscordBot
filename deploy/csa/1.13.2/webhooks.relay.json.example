@@ -1,0 +1,47 @@
+{
+  "configVersion": "1.13.2",
+  "comment": [
+    "Webhook do Professor Carvalho para o BigMonCraft (Modo Relay / Modo A).",
+    "Substitua COLE_A_URL_DO_RELAY_AQUI pela URL completa fornecida pelo administrador:",
+    "  http://<IP_WIREGUARD_DO_PROXY>/v1/integrations/csa/<CSA_SOURCE_TOKEN>",
+    "O token é secreto. Nunca compartilhe fora da equipe administrativa.",
+    "Traffic vai somente pela rede WireGuard (HTTP interno).",
+    "",
+    "O campo 'content' contém o marcador machine-readable PC_CSA_V1 (1.13.2).",
+    "Valores booleanos seguem as strings exatas do JAR:",
+    "  {shiny_unformatted}  -> \"Shiny \" (com espaço) ou vazio",
+    "  {legendary_unformatted} -> \"Legendary\" | \"Mythical\" | \"Ultra Beast\" | \"Paradox\" | vazio",
+    "  {hidden_ability_unformatted} -> \"Hidden Ability \" ou vazio",
+    "  {timestamp} -> epoch em MILISSEGUNDOS",
+    "https://stainlessstasis.github.io/CSA-Docs/config/"
+  ],
+  "webhookURL": "COLE_A_URL_DO_RELAY_AQUI",
+  "webhookContent": {
+    "content": "PC_CSA_V1|dex={dex_unformatted}|lvl={level_unformatted}|x={x}|y={y}|z={z}|biome={biome_unformatted}|bucket={bucket_unformatted}|shiny={shiny_unformatted}|rarity={legendary_unformatted}|ha={hidden_ability_unformatted}|name={name}|player={nearest_player_unformatted}|ts={timestamp}",
+    "username": "Professor Carvalho",
+    "avatarURL": "",
+    "tts": false,
+    "embeds": [
+      {
+        "enabled": true,
+        "title": "**{shiny}{legendary}{bucket}{name} apareceu em {biome}!**",
+        "description": "**Número da Pokédex**: #{dex}\n**Nível**: {level}\n**Raridade**: {bucket}\n**Bioma**: {biome}\n**Habilidade**: {ability}",
+        "color": "",
+        "url": "",
+        "imageURL": "",
+        "thumbnailURL": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{dex}.png",
+        "timestamp": false,
+        "author": {
+          "name": "",
+          "url": "",
+          "iconURL": ""
+        },
+        "fields": [],
+        "footer": {
+          "text": "BigMonCraft • Radar do Professor Carvalho",
+          "iconURL": ""
+        }
+      }
+    ]
+  }
+}

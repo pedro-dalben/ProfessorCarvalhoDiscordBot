@@ -6,7 +6,7 @@ RUN addgroup --system --gid 1001 professor && adduser --system --uid 1001 --gid 
 FROM base AS builder
 ENV CI=true
 COPY . .
-RUN corepack enable && pnpm install --frozen-lockfile && pnpm --filter @bigbangcraft/professor-carvalho-worker run build
+RUN corepack enable && pnpm install --frozen-lockfile && pnpm build
 
 FROM base AS runner
 COPY --from=builder /app/node_modules /app/node_modules

@@ -1,0 +1,40 @@
+{
+  "configVersion": "1.13.2",
+  "comment": [
+    "FALLBACK: webhook Discord DIRETO (Modo B).",
+    "Use apenas se o relay (Modo A) não puder ser usado.",
+    "No Modo B o Professor Carvalho NÃO deduplica, normaliza nem enriquece os alertas.",
+    "Substitua COLE_A_URL_DO_WEBHOOK_DISCORD_AQUI por um webhook de canal Discord.",
+    "O token do webhook é secreto. Nunca commite.",
+    "https://stainlessstasis.github.io/CSA-Docs/config/"
+  ],
+  "webhookURL": "COLE_A_URL_DO_WEBHOOK_DISCORD_AQUI",
+  "webhookContent": {
+    "content": "",
+    "username": "Professor Carvalho",
+    "avatarURL": "",
+    "tts": false,
+    "embeds": [
+      {
+        "enabled": true,
+        "title": "**{shiny}{legendary}{bucket}{name} apareceu!**",
+        "description": "**Número da Pokédex**: #{dex}\n**Nível**: {level}\n**Raridade**: {bucket}\n**Bioma**: {biome}",
+        "color": "",
+        "url": "",
+        "imageURL": "",
+        "thumbnailURL": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{dex}.png",
+        "timestamp": false,
+        "author": {
+          "name": "",
+          "url": "",
+          "iconURL": ""
+        },
+        "fields": [],
+        "footer": {
+          "text": "BigMonCraft • Radar do Professor Carvalho",
+          "iconURL": ""
+        }
+      }
+    ]
+  }
+}

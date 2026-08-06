@@ -7,10 +7,10 @@
 **/*.secret
 **/*.log
 **/logs
-data/generated
 data/fixtures
 docs
 .github
 .gitignore
 .prettierignore
 *.md
+**/*.tsbuildinfo
