@@ -281,7 +281,9 @@ function normalizeConditions(condition: RawSpawnCondition | undefined): Normaliz
  * ordem do schema, o que invalida qualquer hash baseado na ordem do arquivo).
  */
 function canonicalHash(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(sortKeys(value)), "utf8").digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(sortKeys(value)), "utf8")
+    .digest("hex");
 }
 
 function sortKeys(value: unknown): unknown {

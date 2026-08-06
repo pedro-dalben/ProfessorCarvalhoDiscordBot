@@ -1,6 +1,6 @@
 import { escapeMarkdown, normalizeName } from "@bigbangcraft/domain";
 import type { SpawnSnapshot, NormalizedSpawnEntry } from "@bigbangcraft/cobblemon-data";
-import { describeEntryPt } from "@bigbangcraft/cobblemon-data";
+import { describeEntryPt, humanizeRarityPt } from "@bigbangcraft/cobblemon-data";
 import type { ChatInputCommandInteraction, APIEmbedField } from "discord.js";
 import { PT_BR } from "../messages/pt-BR.js";
 import { replySuccess, replyError } from "../replies.js";
@@ -33,9 +33,56 @@ export async function handleSpawnCommand(
     return;
   }
 
-  const slicedEntries = entries.slice(0, 10);
-  const embed = buildSpawnEmbed(slicedEntries, snapshot);
+  const grouped = groupSpawnEntries(entries);
+  const embed = buildSpawnEmbed(grouped, snapshot);
   await replySuccess(interaction, { embeds: [embed] });
+}
+
+/**
+ * Agrupa entradas que diferem apenas em id/biomas/origem (mesma espécie e
+ * mesmas condições), mesclando os biomas — evita campos repetidos quase idênticos.
+ */
+export function groupSpawnEntries(
+  entries: readonly NormalizedSpawnEntry[],
+): NormalizedSpawnEntry[] {
+  const groups = new Map<string, NormalizedSpawnEntry[]>();
+  for (const entry of entries) {
+    const key = JSON.stringify({
+      ...entry,
+      id: undefined,
+      source: undefined,
+      conditions: { ...entry.conditions, biomes: undefined },
+      anticonditions: { ...entry.anticonditions, biomes: undefined },
+    });
+    const group = groups.get(key);
+    if (group) {
+      group.push(entry);
+    } else {
+      groups.set(key, [entry]);
+    }
+  }
+  return [...groups.values()].map(mergeGroupForDisplay);
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function mergeGroupForDisplay(group: NormalizedSpawnEntry[]): NormalizedSpawnEntry {
+  const base = structuredClone(group[0]!);
+  const mergedBiomes = unique(group.flatMap((entry) => entry.conditions.biomes ?? []));
+  base.conditions.biomes = mergedBiomes;
+  const mergedAntiBiomes = unique(group.flatMap((entry) => entry.anticonditions?.biomes ?? []));
+  base.anticonditions.biomes = mergedAntiBiomes;
+  return base;
+}
+
+function speciesDisplayName(entry: NormalizedSpawnEntry): string {
+  const base = entry.form ? `${entry.pokemon} ${entry.form}` : entry.pokemon;
+  return base
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("-");
 }
 
 export function buildSpawnEmbed(
@@ -46,14 +93,17 @@ export function buildSpawnEmbed(
 
   const fields: APIEmbedField[] = [];
 
-  for (const entry of entries) {
-    const rows = describeEntryPt(entry);
-    const label = rows.find((row) => row.label.toLowerCase() === "raridade")?.value ?? "";
-    const fieldName = `${escapeMarkdown(entry.pokemon)} ${label ? `(${escapeMarkdown(label)})` : ""} [${escapeMarkdown(entry.id)}]`;
-    const value = rows.map((row) => `**${row.label}**: ${escapeMarkdown(row.value)}`).join("\n");
+  for (const entry of entries.slice(0, 10)) {
+    const rarity = entry.bucket ? ` (${humanizeRarityPt(entry.bucket)})` : "";
+    const name = `${escapeMarkdown(speciesDisplayName(entry))}${rarity}`;
+    const rows = describeEntryPt(entry).filter((row) => row.label !== "Raridade");
+    const value = rows
+      .map((row) => `**${row.label}**: ${escapeMarkdown(row.value)}`)
+      .join("\n")
+      .slice(0, 1024);
     fields.push({
-      name: fieldName,
-      value: value.slice(0, 1024),
+      name: name.slice(0, 256),
+      value: value || t.footer,
       inline: false,
     });
   }
@@ -66,9 +116,7 @@ export function buildSpawnEmbed(
   }
 
   return {
-    title: `${t.title} ${escapeMarkdown(
-      entries[0]?.form ? `${entries[0].pokemon}-${entries[0].form}` : (entries[0]?.pokemon ?? "?"),
-    )}`,
+    title: `${t.title} ${escapeMarkdown(speciesDisplayName(entries[0]!))}`,
     color: 0x2ecc71,
     fields,
     footer: { text: footerParts.join(" • ") },
