@@ -70,8 +70,20 @@ const PRESET_LABELS_PT: Record<string, string> = {
   cave: "em cavernas",
 };
 
+function titleCase(value: string): string {
+  return value
+    .split(" ")
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .join(" ");
+}
+
 const KNOWN_EXTRA_KEYS_PT: Record<string, string> = {
   minlurelevel: "nível mínimo de isca",
+  israining: "chovendo",
+  isthundering: "trovejando",
+  minperfectivs: "IVs perfeitos mínimos",
+  min_perfect_ivs: "IVs perfeitos mínimos",
+};
   israining: "chovendo",
   isthundering: "trovejando",
   minperfectivs: "IVs perfeitos mínimos",
