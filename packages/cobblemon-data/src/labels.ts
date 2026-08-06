@@ -84,11 +84,6 @@ const KNOWN_EXTRA_KEYS_PT: Record<string, string> = {
   minperfectivs: "IVs perfeitos mínimos",
   min_perfect_ivs: "IVs perfeitos mínimos",
 };
-  israining: "chovendo",
-  isthundering: "trovejando",
-  minperfectivs: "IVs perfeitos mínimos",
-  min_perfect_ivs: "IVs perfeitos mínimos",
-};
 
 const BIOME_LABELS_PT: Record<string, string> = {
   aether: "Éter",
@@ -174,10 +169,7 @@ export function humanizeBiomePt(value: string): string {
   }
   if (parts.length === 1) return biomePartLabel(parts[0] ?? clean);
   const base = biomePartLabel(parts[parts.length - 1] ?? clean);
-  const region = parts
-    .slice(0, -1)
-    .map(biomePartLabel)
-    .join(" ");
+  const region = parts.slice(0, -1).map(biomePartLabel).join(" ");
   return `${base} (${region})`;
 }
 
