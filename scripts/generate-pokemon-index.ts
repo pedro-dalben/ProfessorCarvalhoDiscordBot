@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Gera o índice de autocomplete de Pokémon a partir da PokeAPI.
  *
