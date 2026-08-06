@@ -77,6 +77,54 @@ const MOD_LABELS_PT: Record<string, string> = {
   legendarymonuments: "Legendary Monuments",
 };
 
+/**
+ * Monumento do mod Legendary Monuments onde cada lendário/mítico nasce
+ * (extraído do jar 8.0.3: LegendaryTrackingScreen + estruturas do mod).
+ */
+const LEGENDARY_MONUMENT_PT: Record<string, string> = {
+  mew: "Ilha Final",
+  lugia: "Templo de Lugia",
+  hooh: "Vila Ecruteak",
+  latias: "Ilha do Sul",
+  latios: "Ilha do Sul",
+  uxie: "Lago Agudeza",
+  mesprit: "Lago Veracidade",
+  azelf: "Lago Valor",
+  dialga: "Pilar do Pico",
+  palkia: "Pilar do Pico",
+  heatran: "Caverna de Heatran",
+  regigigas: "Templo de Snowpoint",
+  giratina: "Caverna do Reverso",
+  arceus: "Salão da Origem",
+  kyurem: "Caverna de Kyurem",
+  reshiram: "Torre Espiral do Dragão",
+  zekrom: "Torre Espiral do Dragão",
+  zacian: "Sala do Trono dos Heróis",
+  zamazenta: "Sala do Trono dos Heróis",
+  xerneas: "Árvore da Vida",
+  yveltal: "Casulo de Yveltal",
+  eternatus: "Casulo de Eternatus",
+  calyrex: "Santuário da Coroa",
+  glastrier: "Árvore Dyna",
+  spectrier: "Árvore Dyna",
+  hoopa: "Pirâmide de Hoopa",
+  victini: "Ilha da Liberdade",
+  cobalion: "Anfiteatro",
+  virizion: "Anfiteatro",
+  terrakion: "Anfiteatro",
+  wochien: "Santuário Grasswither",
+  chienpao: "Santuário Icerend",
+  chiyu: "Santuário Firescourge",
+  tinglu: "Santuário Groundblight",
+};
+
+export function legendaryMonumentPt(pokemon: string): string {
+  return (
+    LEGENDARY_MONUMENT_PT[pokemon.toLowerCase()] ??
+    "Monumento lendário (missão do mod)"
+  );
+}
+
 function titleCase(value: string): string {
   return value
     .split(" ")
@@ -462,8 +510,8 @@ export function describeEntryPt(entry: NormalizedSpawnEntry): SpawnConditionSumm
     const otherMods = entry.excludedMods.filter((mod) => mod !== "legendarymonuments");
     if (monuments) {
       rows.push({
-        label: "Estruturas",
-        value: "Monumentos lendários (spawn via mod Legendary Monuments)",
+        label: "Monumento",
+        value: legendaryMonumentPt(entry.pokemon),
       });
     }
     if (otherMods.length > 0) {
