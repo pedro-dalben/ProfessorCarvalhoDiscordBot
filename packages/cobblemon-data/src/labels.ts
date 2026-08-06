@@ -147,8 +147,11 @@ export function humanizeBlockPt(value: string): string {
 function listOrValue(value: unknown): string[] {
   if (Array.isArray(value)) return value.map((item) => String(item));
   if (value === undefined || value === null) return [];
-  if (typeof value === "object") return [];
-  return [String(value)];
+  const scalar = value as string | number | boolean | bigint;
+  if (typeof scalar !== "string" && typeof scalar !== "number" && typeof scalar !== "boolean" && typeof scalar !== "bigint") {
+    return [];
+  }
+  return [String(scalar)];
 }
 
 const BIOME_LABELS_PT: Record<string, string> = {
