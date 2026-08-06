@@ -71,31 +71,101 @@ const PRESET_LABELS_PT: Record<string, string> = {
 };
 
 const KNOWN_EXTRA_KEYS_PT: Record<string, string> = {
-  minLureLevel: "nível mínimo de isca",
-  isRaining: "chovendo",
-  isThundering: "trovejando",
-  minPerfectIvs: "IVs perfeitos mínimos",
+  minlurelevel: "nível mínimo de isca",
+  israining: "chovendo",
+  isthundering: "trovejando",
+  minperfectivs: "IVs perfeitos mínimos",
   min_perfect_ivs: "IVs perfeitos mínimos",
 };
 
-function titleCase(value: string): string {
-  return value
-    .split(" ")
-    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
-    .join(" ");
+const BIOME_LABELS_PT: Record<string, string> = {
+  aether: "Éter",
+  arid: "Árido",
+  badlands: "Badlands",
+  bamboo: "Bambuzal",
+  beach: "Praia",
+  cave: "Caverna",
+  cherry_blossom: "Cerejeiras",
+  coast: "Costa",
+  cold: "Frio",
+  cold_ocean: "Oceano frio",
+  deep_dark: "Escuridão profunda",
+  deep_ocean: "Oceano profundo",
+  desert: "Deserto",
+  dripstone: "Estalactites",
+  end: "End",
+  floral: "Flores",
+  forest: "Floresta",
+  freezing: "Gélido",
+  freshwater: "Água doce",
+  frozen_ocean: "Oceano congelado",
+  glacial: "Glacial",
+  grassland: "Campo",
+  highlands: "Terras altas",
+  hills: "Colinas",
+  island: "Ilha",
+  jungle: "Selva",
+  lukewarm_ocean: "Oceano morno",
+  lush: "Verdente",
+  magical: "Mágico",
+  mountain: "Montanha",
+  mushroom: "Cogumelos",
+  nether: "Nether",
+  ocean: "Oceano",
+  overworld: "Mundo superior",
+  peak: "Pico",
+  plains: "Planícies",
+  plateau: "Planalto",
+  river: "Rio",
+  sandy: "Arenoso",
+  savanna: "Savana",
+  shrubland: "Arbustos",
+  sky: "Céu",
+  snowy: "Nevado",
+  snowy_forest: "Floresta nevada",
+  snowy_taiga: "Taiga nevada",
+  spooky: "Assombrado",
+  swamp: "Pântano",
+  taiga: "Taiga",
+  temperate: "Temperado",
+  temperate_ocean: "Oceano temperado",
+  thermal: "Termal",
+  tropical_island: "Ilha tropical",
+  tundra: "Tundra",
+  volcanic: "Vulcânico",
+  basalt: "Basalto",
+  crystal_canyon: "Cânion de cristal",
+  crystalline_chasm: "Abismo cristalino",
+  floral_meadow: "Campo florido",
+  frozen_river: "Rio congelado",
+  howling_constructs: "Construções uivantes",
+  mud: "Lama",
+  has_block: "Bloco de",
+  unknown: "desconhecido",
+};
+
+function biomePartLabel(part: string): string {
+  return BIOME_LABELS_PT[part] ?? titleCase(part.replace(/_/g, " "));
 }
 
-/** Humaniza identificadores de bioma/tag: `#cobblemon:is_ocean` → "Oceano"; `nether/is_basalt` → "Basalto (Nether)". */
+/** Humaniza identificadores de bioma/tag: `#cobblemon:is_ocean` → "Oceano"; `nether/is_basalt` → "Basalto (Nether)"; `has_block/mud` → "Bloco de Lama". */
 export function humanizeBiomePt(value: string): string {
   const clean = value.replace(/^#/, "");
   const withoutNamespace = clean.includes(":") ? clean.slice(clean.indexOf(":") + 1) : clean;
-  const parts = withoutNamespace.split("/");
-  const labels = parts.map((part) =>
-    titleCase(part.replace(/^is_/i, "").replace(/^the_/i, "").replace(/_/g, " ").trim()),
-  );
-  if (labels.length === 1) return labels[0] ?? clean;
-  const base = labels[labels.length - 1] ?? clean;
-  const region = labels.slice(0, -1).join(" ");
+  const parts = withoutNamespace
+    .split("/")
+    .map((part) => part.replace(/^is_/i, "").replace(/^the_/i, "").toLowerCase())
+    .filter(Boolean);
+  if (parts.length === 0) return clean;
+  if (parts[0] === "has_block" && parts[1]) {
+    return `${biomePartLabel("has_block")} ${biomePartLabel(parts[1])}`;
+  }
+  if (parts.length === 1) return biomePartLabel(parts[0] ?? clean);
+  const base = biomePartLabel(parts[parts.length - 1] ?? clean);
+  const region = parts
+    .slice(0, -1)
+    .map(biomePartLabel)
+    .join(" ");
   return `${base} (${region})`;
 }
 
@@ -208,11 +278,13 @@ export function describeConditionsPt(
     for (const [key, value] of Object.entries(condition.extra)) {
       if (value === true) {
         extraParts.push(humanizeExtraKey(key));
-      } else {
+      } else if (value !== false) {
         extraParts.push(`${humanizeExtraKey(key)}: ${formatExtraValue(value)}`);
       }
     }
-    summary.push({ label: "Condições extras", value: extraParts.join("; ") });
+    if (extraParts.length > 0) {
+      summary.push({ label: "Condições extras", value: extraParts.join("; ") });
+    }
   }
   return summary;
 }
