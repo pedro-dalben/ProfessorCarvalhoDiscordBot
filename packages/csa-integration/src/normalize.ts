@@ -5,41 +5,51 @@ import type { CsaWebhookPayload } from "./payload.js";
 export interface NormalizeOptions {
   sourceVersion: string;
   serverId: string;
+  /** Quando true, o evento é rejeitado se o conteúdo não contiver o marcador PC_CSA_V1. */
+  requireMarker?: boolean;
 }
 
+export type NormalizeResult =
+  | { ok: true; event: SpawnAlertEvent }
+  | { ok: false; code: "CSA_MARKER_MISSING" | "CSA_MARKER_UNPARSEABLE"; message: string };
+
+/**
+ * Normaliza um payload CSA 1.13.2 em um SpawnAlertEvent.
+ *
+ * Ordem garantida: validação do payload -> parsing do marcador PC_CSA_V1 ->
+ * normalização (Unicode NFKC, remoção de markup Discord, limites) -> evento.
+ *
+ * Em modo relay (requireMarker), payload sem marcador é rejeitado.
+ * Caso contrário, um fallback com confiança baixa é produzido a partir do
+ * primeiro embed (usado apenas no modo direto/Discord nativo).
+ */
 export function normalizeCsaEvent(
   payload: CsaWebhookPayload,
   options: NormalizeOptions,
-): SpawnAlertEvent {
-  const now = new Date().toISOString();
+): NormalizeResult {
   const marker = parseMarkerFromContent(payload.content);
 
   if (marker && marker.confidence === "high") {
+    return { ok: true, event: buildEvent(payload, options, marker.event) };
+  }
+
+  if (marker) {
     return {
-      source: "csa",
-      sourceVersion: options.sourceVersion,
-      serverId: options.serverId,
-      receivedAt: marker.event.receivedAt ?? now,
-      species: marker.event.species,
-      displayName: marker.event.displayName,
-      dexNumber: marker.event.dexNumber,
-      level: marker.event.level,
-      shiny: marker.event.shiny,
-      legendary: marker.event.legendary,
-      mythical: marker.event.mythical,
-      ultraBeast: marker.event.ultraBeast,
-      paradox: marker.event.paradox,
-      hiddenAbility: marker.event.hiddenAbility,
-      rarity: marker.event.rarity,
-      bucket: marker.event.bucket,
-      biome: marker.event.biome,
-      coordinates: marker.event.coordinates,
-      nearestPlayer: marker.event.nearestPlayer,
-      parsedConfidence: "high",
-      rawMessage: payload.content,
+      ok: false,
+      code: "CSA_MARKER_UNPARSEABLE",
+      message: "O marcador PC_CSA_V1 foi detectado, mas não pôde ser interpretado com segurança.",
     };
   }
 
+  if (options.requireMarker) {
+    return {
+      ok: false,
+      code: "CSA_MARKER_MISSING",
+      message: "A notificação não contém o marcador PC_CSA_V1 esperado do CSA 1.13.2.",
+    };
+  }
+
+  const now = new Date().toISOString();
   let description = "";
   if (Array.isArray(payload.embeds) && payload.embeds[0]?.description) {
     description = payload.embeds[0].description;
@@ -48,15 +58,49 @@ export function normalizeCsaEvent(
   }
 
   return {
+    ok: true,
+    event: {
+      source: "csa",
+      sourceVersion: options.sourceVersion,
+      serverId: options.serverId,
+      receivedAt: now,
+      displayName: extractField(description, "Pokémon"),
+      level: parseIntFrom(description, "Level"),
+      biome: extractField(description, "Bioma"),
+      parsedConfidence: "low",
+      rawMessage: payload.content ?? description,
+    },
+  };
+}
+
+function buildEvent(
+  payload: CsaWebhookPayload,
+  options: NormalizeOptions,
+  markerEvent: Partial<SpawnAlertEvent>,
+): SpawnAlertEvent {
+  const now = new Date().toISOString();
+  return {
     source: "csa",
     sourceVersion: options.sourceVersion,
     serverId: options.serverId,
-    receivedAt: now,
-    displayName: extractField(description, "Pokémon"),
-    level: parseIntFrom(description, "Level"),
-    biome: extractField(description, "Bioma"),
-    parsedConfidence: "low",
-    rawMessage: payload.content ?? description,
+    receivedAt: markerEvent.receivedAt ?? now,
+    species: markerEvent.species,
+    displayName: markerEvent.displayName,
+    dexNumber: markerEvent.dexNumber,
+    level: markerEvent.level,
+    shiny: markerEvent.shiny,
+    legendary: markerEvent.legendary,
+    mythical: markerEvent.mythical,
+    ultraBeast: markerEvent.ultraBeast,
+    paradox: markerEvent.paradox,
+    hiddenAbility: markerEvent.hiddenAbility,
+    rarity: markerEvent.rarity,
+    bucket: markerEvent.bucket,
+    biome: markerEvent.biome,
+    coordinates: markerEvent.coordinates,
+    nearestPlayer: markerEvent.nearestPlayer,
+    parsedConfidence: "high",
+    rawMessage: payload.content,
   };
 }
 

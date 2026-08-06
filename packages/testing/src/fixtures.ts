@@ -2,6 +2,13 @@ import type { CsaWebhookPayload } from "@bigbangcraft/csa-integration";
 import { buildMarkerTemplate } from "@bigbangcraft/csa-integration";
 import type { SpawnAlertEvent } from "@bigbangcraft/domain";
 
+/**
+ * Gera um payload exatamente como o CSA 1.13.2 envia:
+ * - booleanos como strings do JAR: "Shiny " (com espaço) / "" para shiny;
+ *   "Legendary" | "Mythical" | "Ultra Beast" | "Paradox" / "" para rarity;
+ *   "Hidden Ability " / "" para hidden ability;
+ * - timestamp em MILISSEGUNDOS (System.currentTimeMillis()).
+ */
 export function createCsaFixture(
   overrides?: Partial<{
     dex: number;
@@ -14,11 +21,24 @@ export function createCsaFixture(
     shiny: boolean;
     legendary: boolean;
     mythical: boolean;
+    ultraBeast: boolean;
+    paradox: boolean;
+    hiddenAbility: boolean;
     name: string;
     player: string;
     timestamp: number;
   }>,
 ): CsaWebhookPayload {
+  const rarityValue = overrides?.legendary
+    ? "Legendary"
+    : overrides?.mythical
+      ? "Mythical"
+      : overrides?.ultraBeast
+        ? "Ultra Beast"
+        : overrides?.paradox
+          ? "Paradox"
+          : "";
+
   const marker = buildMarkerTemplate()
     .replace("{dex_unformatted}", String(overrides?.dex ?? 25))
     .replace("{level_unformatted}", String(overrides?.level ?? 50))
@@ -26,16 +46,13 @@ export function createCsaFixture(
     .replace("{y}", String(overrides?.y ?? 64))
     .replace("{z}", String(overrides?.z ?? -567))
     .replace("{biome_unformatted}", overrides?.biome ?? "Savanna Plateau")
-    .replace("{bucket_unformatted}", overrides?.bucket ?? "ULTRA_RARE")
-    .replace("{shiny_unformatted}", overrides?.shiny ? "Shiny " : " ")
-    .replace("{legendary_unformatted}", overrides?.legendary ? "Legendary " : " ")
-    .replace("{mythical_unformatted}", overrides?.mythical ? "Mythical " : " ")
-    .replace("{ultrabeast_unformatted}", " ")
-    .replace("{paradox_unformatted}", " ")
-    .replace("{hidden_ability_unformatted}", " ")
+    .replace("{bucket_unformatted}", overrides?.bucket ?? "Ultra Rare")
+    .replace("{shiny_unformatted}", overrides?.shiny ? "Shiny " : "")
+    .replace("{legendary_unformatted}", rarityValue)
+    .replace("{hidden_ability_unformatted}", overrides?.hiddenAbility ? "Hidden Ability " : "")
     .replace("{name}", overrides?.name ?? "Pikachu")
-    .replace("{nearest_player_unformatted}", overrides?.player ?? "Steve")
-    .replace("{timestamp}", String(overrides?.timestamp ?? Math.floor(Date.now() / 1000)));
+    .replace("{nearest_player_unformatted}", overrides?.player ?? "TreinadorTeste")
+    .replace("{timestamp}", String(overrides?.timestamp ?? Date.now()));
 
   return {
     content: marker,
@@ -67,7 +84,7 @@ export function sanitizedSpawnAlertEvent(overrides?: Partial<SpawnAlertEvent>): 
     level: 50,
     shiny: false,
     legendary: false,
-    bucket: "ULTRA_RARE",
+    bucket: "Ultra Rare",
     biome: "Savanna Plateau",
     coordinates: { x: 1234, y: 64, z: -567 },
     ...overrides,

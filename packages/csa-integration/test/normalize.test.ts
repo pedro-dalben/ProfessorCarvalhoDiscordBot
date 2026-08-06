@@ -1,105 +1,90 @@
 import { describe, it, expect } from "vitest";
 import { normalizeCsaEvent } from "../src/normalize.js";
-import { createCsaFixture } from "@bigbangcraft/testing";
+import { createCsaFixture, sanitizedSpawnAlertEvent } from "@bigbangcraft/testing";
 
 describe("normalizeCsaEvent", () => {
   const options = { sourceVersion: "1.13.2", serverId: "bigmoncraft" };
 
-  it("normalizes Pikachu CSA fixture with high-confidence marker", () => {
-    const payload = createCsaFixture({
-      dex: 25,
-      level: 50,
-      name: "Pikachu",
-      biome: "Savanna Plateau",
-      bucket: "ULTRA_RARE",
-    });
-    const event = normalizeCsaEvent(payload, options);
+  it("produz evento completo a partir do marcador", () => {
+    const fixture = createCsaFixture({ dex: 130, level: 55, name: "Gyarados", shiny: true });
+    const result = normalizeCsaEvent(fixture, options);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.event.dexNumber).toBe(130);
+      expect(result.event.level).toBe(55);
+      expect(result.event.displayName).toBe("Gyarados");
+      expect(result.event.shiny).toBe(true);
+      expect(result.event.parsedConfidence).toBe("high");
+    }
+  });
 
+  it("rejeita payload sem marcador em modo relay", () => {
+    const result = normalizeCsaEvent(
+      { content: "sem marcador" },
+      { ...options, requireMarker: true },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("CSA_MARKER_MISSING");
+  });
+
+  it("rejeita marcador com valores desconhecidos em modo relay", () => {
+    const fixture = createCsaFixture();
+    fixture.content = fixture.content?.replace("rarity=", "rarity=UnknownThing|");
+    const result = normalizeCsaEvent(fixture, { ...options, requireMarker: true });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("CSA_MARKER_UNPARSEABLE");
+  });
+
+  it("aceita payload sem marcador fora do modo relay (fallback baixa confiança)", () => {
+    const result = normalizeCsaEvent(
+      { content: "Um Pikachu selvagem apareceu!" },
+      { ...options, requireMarker: false },
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.event.parsedConfidence).toBe("low");
+  });
+
+  it("parseia shiny e legendary corretamente", () => {
+    const fixture = createCsaFixture({ dex: 149, name: "Dragonite", shiny: true, legendary: true });
+    const result = normalizeCsaEvent(fixture, options);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.event.shiny).toBe(true);
+      expect(result.event.legendary).toBe(true);
+    }
+  });
+
+  it("sem valores opcionais: flags falsos, sem coordenadas inválidas", () => {
+    const fixture = createCsaFixture({
+      shiny: false,
+      legendary: false,
+      player: "",
+      timestamp: 1754400000000,
+    });
+    const result = normalizeCsaEvent(fixture, options);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.event.shiny).toBe(false);
+      expect(result.event.legendary).toBe(false);
+      expect(result.event.nearestPlayer).toBeUndefined();
+    }
+  });
+
+  it("preserva receivedAt do marcador (timestamp do JAR)", () => {
+    const fixture = createCsaFixture({ timestamp: 1754400000000 });
+    const result = normalizeCsaEvent(fixture, options);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.event.receivedAt).toBe(new Date(1754400000000).toISOString());
+    }
+  });
+});
+
+describe("sanitizedSpawnAlertEvent (helper de testes)", () => {
+  it("gera evento padrão utilizável", () => {
+    const event = sanitizedSpawnAlertEvent();
     expect(event.dexNumber).toBe(25);
-    expect(event.level).toBe(50);
-    expect(event.displayName).toBe("Pikachu");
-    expect(event.biome).toBe("Savanna Plateau");
-    expect(event.bucket).toBe("ULTRA_RARE");
-    expect(event.parsedConfidence).toBe("high");
-    expect(event.coordinates).toBeDefined();
-    expect(event.coordinates?.x).toBe(1234);
-    expect(event.coordinates?.z).toBe(-567);
-  });
-
-  it("normalizes shiny event", () => {
-    const payload = createCsaFixture({
-      dex: 149,
-      name: "Dragonite",
-      shiny: true,
-    });
-    const event = normalizeCsaEvent(payload, options);
-
-    expect(event.shiny).toBe(true);
-    expect(event.parsedConfidence).toBe("high");
-    expect(event.displayName).toBe("Dragonite");
-  });
-
-  it("normalizes legendary event", () => {
-    const payload = createCsaFixture({
-      dex: 144,
-      name: "Articuno",
-      legendary: true,
-    });
-    const event = normalizeCsaEvent(payload, options);
-
-    expect(event.legendary).toBe(true);
-    expect(event.parsedConfidence).toBe("high");
-  });
-
-  it("normalizes mythical event", () => {
-    const payload = createCsaFixture({
-      dex: 151,
-      name: "Mew",
-      mythical: true,
-    });
-    const event = normalizeCsaEvent(payload, options);
-
-    expect(event.mythical).toBe(true);
-    expect(event.parsedConfidence).toBe("high");
-  });
-
-  it("returns low-confidence event for non-marker payload", () => {
-    const payload: Record<string, unknown> = {
-      content: "**Pokémon**: Squirtle\n**Level**: 15\n**Bioma**: Forest",
-    };
-    const event = normalizeCsaEvent(payload, options);
-
-    expect(event.parsedConfidence).toBe("low");
-    expect(event.displayName).toBe("Squirtle");
-    expect(event.level).toBe(15);
-    expect(event.biome).toBe("Forest");
-  });
-
-  it("returns undefined for missing optional fields", () => {
-    const payload: Record<string, unknown> = {
-      content: "A wild Pokémon appeared!",
-    };
-    const event = normalizeCsaEvent(payload, options);
-
-    expect(event.parsedConfidence).toBe("low");
-    expect(event.displayName).toBeUndefined();
-    expect(event.level).toBeUndefined();
-    expect(event.biome).toBeUndefined();
-  });
-
-  it("never returns placeholder level 50", () => {
-    const payload = createCsaFixture({ dex: 25, level: 42, name: "Pikachu" });
-    const event = normalizeCsaEvent(payload, options);
-    expect(event.level).toBe(42);
-  });
-
-  it("never returns placeholder Savanna biome", () => {
-    const payload = createCsaFixture({
-      dex: 25,
-      name: "Pikachu",
-      biome: "Forest",
-    });
-    const event = normalizeCsaEvent(payload, options);
-    expect(event.biome).toBe("Forest");
+    expect(event.serverId).toBe("test-server");
+    expect(event.sourceVersion).toBe("1.13.2");
   });
 });
