@@ -106,6 +106,7 @@ export const PT_BR = {
       dimension: "Dimensão",
       specialCondition: "Condição especial",
       region: "Região aproximada",
+      exactCoordinates: "Coordenadas (uso administrativo)",
     },
     footer: "BigMonCraft • Radar do Professor Carvalho",
     hiddenAbilityLabel: "Habilidade oculta",

@@ -77,12 +77,22 @@ export function buildSpawnAlertEmbed(
   }
 
   if (
-    options.coordinatePolicy === "region" &&
+    (options.coordinatePolicy === "region" || options.coordinatePolicy === "exact_admin_only") &&
     event.coordinates?.x !== undefined &&
     event.coordinates?.z !== undefined
   ) {
-    const region = roundToRegion(event.coordinates.x, event.coordinates.z, options.regionGridSize);
-    lines.push(`**${t.fields.region}**: ${escapeMarkdown(formatRegionPt(region))}`);
+    if (options.coordinatePolicy === "exact_admin_only") {
+      lines.push(
+        `**${t.fields.exactCoordinates}**: \`${Math.round(event.coordinates.x)}, ${Math.round(event.coordinates.z)}\``,
+      );
+    } else {
+      const region = roundToRegion(
+        event.coordinates.x,
+        event.coordinates.z,
+        options.regionGridSize,
+      );
+      lines.push(`**${t.fields.region}**: ${escapeMarkdown(formatRegionPt(region))}`);
+    }
   }
 
   if (options.showNearestPlayer && event.nearestPlayer) {
