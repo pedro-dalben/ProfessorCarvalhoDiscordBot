@@ -431,11 +431,15 @@ Nesse caso, o comando `/spawn` retorna "snapshot de spawns não disponível".
 ## Teste de alerta CSA
 
 ```bash
+# 0. Diagnóstico e fixture (sem o servidor Minecraft)
+pnpm integrations:csa:doctor
+pnpm integrations:csa:test-fixture -- --fixture shiny
+
 # 1. Ativar spawn por comando temporariamente no server.json do Minecraft
 #    "enableSpawnCommandAlerts": true
 
-# 2. Recarregar CSA no servidor
-# /cobblemonspawnalerts reload
+# 2. Recarregar CSA no servidor (comando confirmado no JAR 1.13.2)
+# /csa-common reload
 
 # 3. Disparar spawn no servidor Minecraft
 # /pokespawn pikachu
@@ -447,7 +451,7 @@ docker compose -f deploy/compose.yaml logs bot-api --tail 20 | grep -i csa
 
 # 6. Desativar spawn por comando
 #    "enableSpawnCommandAlerts": false
-# /cobblemonspawnalerts reload
+# /csa-common reload
 ```
 
 ## Rollback
@@ -484,7 +488,7 @@ docker compose -f deploy/compose.yaml exec -T postgres pg_restore \
 # No servidor Minecraft
 cp config/cobblemon-spawn-alerts/server.json.bak config/cobblemon-spawn-alerts/server.json
 cp config/cobblemon-spawn-alerts/webhooks.json.bak config/cobblemon-spawn-alerts/webhooks.json
-# /cobblemonspawnalerts reload
+# /csa-common reload   (comando confirmado no JAR 1.13.2)
 ```
 
 ## Rotação de segredos
@@ -530,9 +534,13 @@ vim /opt/professor-carvalho/.env
 # 3. Atualizar webhooks.json no servidor Minecraft
 # URL: http://<IP>/v1/integrations/csa/<NOVO_TOKEN>
 
-# 4. Recarregar CSA
-# /cobblemonspawnalerts reload
+# 4. Recarregar CSA (comando confirmado no JAR 1.13.2)
+# /csa-common reload
 
-# 5. Reiniciar bot-api
+# 5. Atualizar o hash da fonte (idempotente) e reiniciar o bot-api
+pnpm integrations:csa:setup
 docker compose -f deploy/compose.yaml restart bot-api
 ```
+
+> Nota: o `integrations:csa:setup` roda repetidamente sem efeitos colaterais
+> (atualiza `token_hash`, `expected_version` e metadados).

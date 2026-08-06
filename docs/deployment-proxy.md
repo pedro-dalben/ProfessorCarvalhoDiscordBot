@@ -258,14 +258,14 @@ DISCORD_COMMAND_REGISTRATION_MODE=global pnpm discord:register
 
 ## Configuração CSA no servidor Minecraft
 
-Consulte `deploy/csa/README.md` e `docs/csa-integration.md` para o procedimento completo.
+Consulte `deploy/csa/1.13.2/README.md` e `docs/csa-integration.md` para o procedimento completo.
 
 Resumo:
 
-1. Copie `deploy/csa/server.json.example` → `config/cobblemon-spawn-alerts/server.json`
-2. Copie `deploy/csa/webhooks.json.example` → `config/cobblemon-spawn-alerts/webhooks.json`
+1. Copie `deploy/csa/1.13.2/server.json.example` → `config/cobblemon-spawn-alerts/server.json`
+2. Copie `deploy/csa/1.13.2/webhooks.relay.json.example` → `config/cobblemon-spawn-alerts/webhooks.json`
 3. Substitua a URL do webhook pelo endpoint do relay
-4. Execute `/cobblemonspawnalerts reload` no servidor
+4. Execute `/csa-common reload` no servidor (comando confirmado no JAR 1.13.2)
 
 ## Monitoramento
 

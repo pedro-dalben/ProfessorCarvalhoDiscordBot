@@ -121,10 +121,34 @@ POST /v1/integrations/csa/<CSA_SOURCE_TOKEN>
 O CSA 1.13.2 não suporta cabeçalhos HTTP customizados. A URL é o único campo
 configurável no `webhooks.json` que aceita valores arbitrários.
 
+### Comparação em tempo constante
+
+O relay compara o token com `safeTokenCompare` (timing-safe equal). Além disso,
+a comparação **não revela** se a fonte de integração existe: token inválido →
+401 idêntico em ambos os casos.
+
+### Armazenamento
+
+O PostgreSQL guarda apenas o **hash SHA-256** do token (`integration_sources.token_hash`).
+O token em texto puro existe somente em `.env` (proxy) e `webhooks.json`
+(servidor Minecraft), ambos com permissão `600`.
+
 ### Migração futura
 
 O Gateway Fabric (`docs/future-gateway-contract.md`) substituirá o token no path
 por HMAC-SHA256 via cabeçalho `X-Professor-Signature`.
+
+## Proxy trust e X-Forwarded-For
+
+- `trustProxy` do Fastify **nunca** é `true`. Apenas `TRUSTED_PROXY_ADDRESSES`
+  (loopback e/ou endereços/CIDRs explícitos) são confiados.
+- O Nginx envia `X-Forwarded-For: $remote_addr` (o par TCP real), **nunca**
+  `$proxy_add_x_forwarded_for` — assim um cabeçalho XFF forjado pelo cliente
+  não atravessa o proxy.
+- O CIDR allowlist é validado contra `request.ip` (par TCP após o trust chain),
+  não contra cabeçalhos do cliente. Teste e2e cobre XFF forjado.
+- Consequência: um atacante fora da WireGuard não consegue "fabricar" um IP
+  permitido; no máximo consegue ser ignorado.
 
 ## Limitações do IP allowlist
 
@@ -151,6 +175,21 @@ ler essa URL e postar mensagens arbitrárias no canal do Discord.
 - Use o Modo A (relay) sempre que possível
 - Se o Modo B for necessário, restrinja o acesso ao `webhooks.json` no servidor
 - Considere um canal de webhook dedicado com permissões limitadas
+
+## Política de falhas do relay
+
+| Cenário                 | Comportamento                                                             | Motivo                                                             |
+| ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Redis indisponível      | Dedup **fail-open** (`CSA_DEDUP_FAIL_OPEN=true`): evento aceito sem dedup | Evitar perder alertas legítimos; duplicatas ocasionais são aceitas |
+| PostgreSQL indisponível | **503** — evento não aceito sem persistência durável                      | Nunca "aceitar e descartar"                                        |
+| Payload malformado      | 400 + métrica `professor_csa_parse_failure_total`                         | Rejeição explícita                                                 |
+| Token inválido          | 401 (sem revelar existência da fonte)                                     | Anti-enumeração                                                    |
+| IP fora do CIDR         | 403, sem processar                                                        | Defesa em profundidade                                             |
+
+Rate limiting: limite global (`HTTP_RATE_LIMIT_MAX`) + limite específico da rota
+CSA (`CSA_RATE_LIMIT_MAX`, padrão 60/min). Corpo limitado a 64 KiB
+(`CSA_BODY_LIMIT_BYTES`). Logs do relay sanitizam a URL (token redatado) e o
+Nginx desliga o access log na rota tokenizada.
 
 ## Redação de logs
 

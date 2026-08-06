@@ -108,7 +108,7 @@ pnpm data:import-cobblemon -- --source <dir> --output data/generated/bigmoncraft
 
 Modo **Relay (Modo A)** — o CSA envia para um endpoint interno via WireGuard.
 
-Consulte `deploy/csa/README.md` e `docs/csa-integration.md` para configuração.
+Consulte `deploy/csa/1.13.2/README.md` e `docs/csa-integration.md` para configuração.
 
 ## Segurança
 
