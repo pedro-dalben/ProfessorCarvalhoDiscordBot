@@ -23,7 +23,7 @@
     "format:check": "prettier --check .",
     "test": "pnpm test:unit && pnpm test:integration",
     "test:unit": "vitest run --exclude \"**/*.int.test.ts\"",
-    "test:integration": "vitest run \"**/*.int.test.ts\" --testTimeout=120000 --hookTimeout=120000",
+    "test:integration": "vitest run --dir apps/bot-api/test --testTimeout=120000 --hookTimeout=120000",
     "test:coverage": "vitest run --exclude \"**/*.int.test.ts\" --coverage",
     "discord:register": "tsx apps/bot-api/src/discord/register.ts",
     "discord:clear": "tsx apps/bot-api/src/discord/register.ts --clear",
@@ -34,13 +34,20 @@
     "data:import-cobblemon": "tsx packages/cobblemon-data/src/cli.ts",
     "data:generate-pokemon-index": "tsx scripts/generate-pokemon-index.ts",
     "secrets:generate": "tsx scripts/secrets-generate.ts",
+    "integrations:csa:setup": "tsx scripts/csa-setup.ts",
+    "integrations:csa:doctor": "tsx scripts/csa-doctor.ts",
+    "integrations:csa:test-fixture": "tsx scripts/csa-test-fixture.ts",
     "security:audit": "pnpm audit --prod"
   },
   "devDependencies": {
+    "@bigbangcraft/config": "workspace:*",
+    "@bigbangcraft/database": "workspace:*",
+    "@bigbangcraft/queue": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.2",
     "@vitest/coverage-v8": "^4.1.10",
     "concurrently": "^10.0.4",
+    "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
@@ -49,6 +56,7 @@
     "tsx": "^4.23.5",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.66.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "ioredis": "^6.0.0"
   }
 }
