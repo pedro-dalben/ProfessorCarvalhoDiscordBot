@@ -244,6 +244,13 @@ async function handleLink(request: FastifyRequest, reply: FastifyReply, deps: Ga
       message: "Os dados de vinculação são inválidos.",
     });
   }
+  const attemptKey = `${deps.config.REDIS_KEY_PREFIX}identity:attempt:${auth.serverId}:${minecraftUuid}`;
+  const attempts = await deps.redis.incr(attemptKey);
+  if (attempts === 1)
+    await deps.redis.expire(attemptKey, deps.config.IDENTITY_LINK_CODE_TTL_SECONDS);
+  if (attempts > deps.config.IDENTITY_LINK_CODE_MAX_ATTEMPTS) {
+    return reply.status(429).send(linkFailure("IDENTITY_TOO_MANY_ATTEMPTS"));
+  }
   const result = await consumeIdentityLinkCode(deps.db, {
     codeHash: hashLinkCode(code, deps.config.IDENTITY_LINK_CODE_PEPPER ?? ""),
     minecraftUuid,
@@ -251,6 +258,7 @@ async function handleLink(request: FastifyRequest, reply: FastifyReply, deps: Ga
     serverId: auth.serverId,
   });
   if (!result.success) return reply.status(409).send(linkFailure(result.code));
+  await deps.redis.del(attemptKey);
   return reply.send({
     success: true,
     code: "IDENTITY_LINKED",
