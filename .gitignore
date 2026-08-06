@@ -41,3 +41,6 @@ redisdata/
 
 # Testcontainers
 .testcontainers/
+
+# Diretórios órfãos do pnpm (instalações interrompidas)
+.pnpm-store.orphan/
