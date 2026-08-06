@@ -8,7 +8,18 @@ describe("contrato Gateway v1", () => {
     const fixturePath = fileURLToPath(
       new URL("../../../docs/contracts/gateway-v1.json", import.meta.url),
     );
-    const fixture = JSON.parse(await readFile(fixturePath, "utf8")) as Record<string, string>;
+    const fixture = JSON.parse(await readFile(fixturePath, "utf8")) as {
+      testOnlySecret: string;
+      method: string;
+      path: string;
+      serverId: string;
+      timestamp: string;
+      requestId: string;
+      gatewayVersion: string;
+      body: string;
+      bodySha256: string;
+      signature: string;
+    };
     const body = Buffer.from(fixture.body, "utf8");
     const hash = bodySha256(body);
     const canonical = canonicalRequest({
