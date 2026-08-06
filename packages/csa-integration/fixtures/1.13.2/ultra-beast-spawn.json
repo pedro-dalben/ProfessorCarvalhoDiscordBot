@@ -1,0 +1,20 @@
+{
+  "content": "PC_CSA_V1|dex=795|lvl=65|x=4567|y=70|z=890|biome=Swamp|bucket=Ultra Rare|shiny= |rarity=Ultra Beast|ha= |name=Pheromosa|player=TreinadorTeste|ts=1754400003000",
+  "username": "Professor Carvalho",
+  "avatar_url": "",
+  "tts": false,
+  "embeds": [
+    {
+      "title": "**An Ultra Beast Pheromosa has appeared!**",
+      "description": "**Pokedex Number**: #795\n**Level**: 65\n**Rarity**: Ultra Rare\n**Biome**: Swamp",
+      "color": "e74c3c",
+      "url": "",
+      "image": { "url": "" },
+      "thumbnail": { "url": "" },
+      "timestamp": "2025-08-05T12:03:00Z",
+      "author": { "name": "", "url": "", "icon_url": "" },
+      "fields": [],
+      "footer": { "text": "BigMonCraft", "icon_url": "" }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "content": "PC_CSA_V1|dex=984|lvl=58|x=5678|y=75|z=901|biome=Badlands|bucket=Ultra Rare|shiny= |rarity=Paradox|ha= |name=Great Tusk|player=TreinadorTeste|ts=1754400004000",
+  "username": "Professor Carvalho",
+  "avatar_url": "",
+  "tts": false,
+  "embeds": [
+    {
+      "title": "**A Paradox Great Tusk has appeared!**",
+      "description": "**Pokedex Number**: #984\n**Level**: 58\n**Rarity**: Ultra Rare\n**Biome**: Badlands",
+      "color": "3498db",
+      "url": "",
+      "image": { "url": "" },
+      "thumbnail": { "url": "" },
+      "timestamp": "2025-08-05T12:04:00Z",
+      "author": { "name": "", "url": "", "icon_url": "" },
+      "fields": [],
+      "footer": { "text": "BigMonCraft", "icon_url": "" }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "content": "PC_CSA_V1|dex=151|lvl=60|x=3456|y=80|z=789|biome=Jungle|bucket=Ultra Rare|shiny= |rarity=Mythical|ha= |name=Mew|player=TreinadorTeste|ts=1754400002000",
+  "username": "Professor Carvalho",
+  "avatar_url": "",
+  "tts": false,
+  "embeds": [
+    {
+      "title": "**A Mythical Mew has appeared!**",
+      "description": "**Pokedex Number**: #151\n**Level**: 60\n**Rarity**: Ultra Rare\n**Biome**: Jungle",
+      "color": "e74c3c",
+      "url": "",
+      "image": { "url": "" },
+      "thumbnail": { "url": "" },
+      "timestamp": "2025-08-05T12:02:00Z",
+      "author": { "name": "", "url": "", "icon_url": "" },
+      "fields": [],
+      "footer": { "text": "BigMonCraft", "icon_url": "" }
+    }
+  ]
+}

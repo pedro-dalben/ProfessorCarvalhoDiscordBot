@@ -1,0 +1,20 @@
+{
+  "content": "PC_CSA_V1|dex=6|lvl=36|x=7777|y=63|z=8888|biome=Volcano|bucket=Ultra Rare|shiny= |rarity=SomethingUnknown|ha= |name=Charizard|player=TreinadorTeste|ts=1754400007000",
+  "username": "Professor Carvalho",
+  "avatar_url": "",
+  "tts": false,
+  "embeds": [
+    {
+      "title": "**A wild Charizard has appeared!**",
+      "description": "**Pokedex Number**: #6\n**Level**: 36\n**Rarity**: Ultra Rare\n**Biome**: Volcano",
+      "color": "",
+      "url": "",
+      "image": { "url": "" },
+      "thumbnail": { "url": "" },
+      "timestamp": "2025-08-05T12:07:00Z",
+      "author": { "name": "", "url": "", "icon_url": "" },
+      "fields": [],
+      "footer": { "text": "BigMonCraft", "icon_url": "" }
+    }
+  ]
+}

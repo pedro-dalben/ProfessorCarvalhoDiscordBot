@@ -1,9 +1,29 @@
 import { z } from "zod";
 
+/**
+ * Schema do payload JSON produzido pelo CSA 1.13.2.
+ *
+ * O JAR serializa o modelo `com.n1netails.n1netails.discord.model.WebhookMessage`
+ * com Jackson (campos em snake_case estilo Discord):
+ *
+ *   { content, username, avatar_url, tts, embeds[] }
+ *
+ * Cada embed possui: title, description, url, color, author{name,url,icon_url},
+ * fields[{name,value,inline}], footer{text,icon_url}, image{url},
+ * thumbnail{url}, timestamp (ISO-8601 gerado por Instant.now() quando habilitado).
+ *
+ * As chaves camelCase (`avatarURL`, `imageURL`, `thumbnailURL`, `iconURL`)
+ * existem apenas no arquivo de CONFIGURAÇÃO do CSA (`webhooks.json`); o
+ * payload HTTP enviado usa as chaves snake_case do modelo serializado.
+ */
 export const csaEmbedFieldSchema = z.object({
   name: z.string().max(256).optional(),
   value: z.string().max(1024).optional(),
   inline: z.boolean().optional(),
+});
+
+const csaEmbedImageSchema = z.object({
+  url: z.string().optional(),
 });
 
 export const csaEmbedSchema = z
@@ -13,20 +33,20 @@ export const csaEmbedSchema = z
     url: z.string().optional(),
     color: z.string().optional(),
     timestamp: z.string().optional(),
-    thumbnailURL: z.string().optional(),
-    imageUrl: z.string().optional(),
+    thumbnail: csaEmbedImageSchema.optional(),
+    image: csaEmbedImageSchema.optional(),
     author: z
       .object({
         name: z.string().optional(),
         url: z.string().optional(),
-        iconURL: z.string().optional(),
+        icon_url: z.string().optional(),
       })
       .optional(),
-    fields: z.array(csaEmbedFieldSchema).optional(),
+    fields: z.array(csaEmbedFieldSchema).max(25).optional(),
     footer: z
       .object({
         text: z.string().optional(),
-        iconURL: z.string().optional(),
+        icon_url: z.string().optional(),
       })
       .optional(),
   })
@@ -37,7 +57,6 @@ export const csaWebhookPayloadSchema = z
     content: z.string().max(2000).optional(),
     username: z.string().max(80).optional(),
     avatar_url: z.string().optional(),
-    avatarURL: z.string().optional(),
     tts: z.boolean().optional(),
     embeds: z.array(csaEmbedSchema).max(10).optional(),
   })

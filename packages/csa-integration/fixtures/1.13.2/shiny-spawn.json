@@ -1,0 +1,20 @@
+{
+  "content": "PC_CSA_V1|dex=130|lvl=55|x=1234|y=64|z=-567|biome=Savanna Plateau|bucket=Ultra Rare|shiny=Shiny |rarity= |ha= |name=Gyarados|player=TreinadorTeste|ts=1754400000000",
+  "username": "Professor Carvalho",
+  "avatar_url": "",
+  "tts": false,
+  "embeds": [
+    {
+      "title": "**A shiny Gyarados has appeared!**",
+      "description": "**Pokedex Number**: #130\n**Level**: 55\n**Rarity**: Ultra Rare\n**Biome**: Savanna Plateau",
+      "color": "ffd700",
+      "url": "",
+      "image": { "url": "" },
+      "thumbnail": { "url": "" },
+      "timestamp": "2025-08-05T12:00:00Z",
+      "author": { "name": "", "url": "", "icon_url": "" },
+      "fields": [],
+      "footer": { "text": "BigMonCraft", "icon_url": "" }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "content": "PC_CSA_V1|dex=25|lvl=50|x=1111|y=64|z=2222|biome=Plains|bucket=Common|shiny= |rarity= |ha= |name=Pikachu|player=|ts=1754400006000",
+  "username": "Professor Carvalho",
+  "avatar_url": "",
+  "tts": false,
+  "embeds": [
+    {
+      "title": "**A wild Pikachu has appeared!**",
+      "description": "**Pokedex Number**: #25\n**Level**: 50\n**Rarity**: Common\n**Biome**: Plains",
+      "color": "",
+      "url": "",
+      "image": { "url": "" },
+      "thumbnail": { "url": "" },
+      "timestamp": "2025-08-05T12:06:00Z",
+      "author": { "name": "", "url": "", "icon_url": "" },
+      "fields": [],
+      "footer": { "text": "BigMonCraft", "icon_url": "" }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "content": "PC_CSA_V1|dex=149|lvl=75|x=6789|y=100|z=-123|biome=Ocean|bucket=Ultra Rare|shiny=Shiny |rarity=Legendary|ha=Hidden Ability |name=Dragonite|player=TreinadorTeste|ts=1754400005000",
+  "username": "Professor Carvalho",
+  "avatar_url": "",
+  "tts": false,
+  "embeds": [
+    {
+      "title": "**A shiny Legendary Dragonite has appeared!**",
+      "description": "**Pokedex Number**: #149\n**Level**: 75\n**Rarity**: Ultra Rare\n**Biome**: Ocean",
+      "color": "ffd700",
+      "url": "",
+      "image": { "url": "" },
+      "thumbnail": { "url": "" },
+      "timestamp": "2025-08-05T12:05:00Z",
+      "author": { "name": "", "url": "", "icon_url": "" },
+      "fields": [],
+      "footer": { "text": "BigMonCraft", "icon_url": "" }
+    }
+  ]
+}

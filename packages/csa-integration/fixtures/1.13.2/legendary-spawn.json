@@ -1,0 +1,20 @@
+{
+  "content": "PC_CSA_V1|dex=145|lvl=70|x=2345|y=90|z=678|biome=Tundra|bucket=Ultra Rare|shiny= |rarity=Legendary|ha= |name=Zapdos|player=TreinadorTeste|ts=1754400001000",
+  "username": "Professor Carvalho",
+  "avatar_url": "",
+  "tts": false,
+  "embeds": [
+    {
+      "title": "**A Legendary Zapdos has appeared!**",
+      "description": "**Pokedex Number**: #145\n**Level**: 70\n**Rarity**: Ultra Rare\n**Biome**: Tundra",
+      "color": "e74c3c",
+      "url": "",
+      "image": { "url": "" },
+      "thumbnail": { "url": "" },
+      "timestamp": "2025-08-05T12:01:00Z",
+      "author": { "name": "", "url": "", "icon_url": "" },
+      "fields": [],
+      "footer": { "text": "BigMonCraft", "icon_url": "" }
+    }
+  ]
+}
