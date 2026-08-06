@@ -33,6 +33,44 @@ describe("validateCsaPayload", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("accepts nullish optional fields (Jackson serialization do CSA)", () => {
+    const result = validateCsaPayload({
+      content: "PC_CSA_V1|x=1|y=2|z=3",
+      username: null,
+      avatar_url: null,
+      tts: null,
+      embeds: [
+        {
+          title: "apareceu!",
+          description: null,
+          color: null,
+          url: null,
+          timestamp: false,
+          thumbnail: null,
+          image: null,
+          author: { name: "", url: null, icon_url: null },
+          fields: null,
+          footer: { text: "BigMonCraft", icon_url: null },
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts numeric color (formato aceito pelo Discord)", () => {
+    const result = validateCsaPayload({
+      embeds: [{ title: "t", color: 16711680 }],
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("still rejects oversized field values", () => {
+    const result = validateCsaPayload({
+      embeds: [{ fields: [{ name: "x", value: "a".repeat(2048) }] }],
+    });
+    expect(result.ok).toBe(false);
+  });
+
   it("strips avatar_url from accepted payload", () => {
     const result = validateCsaPayload({
       content: "Hello",

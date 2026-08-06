@@ -22,43 +22,47 @@ export const csaEmbedFieldSchema = z.object({
   inline: z.boolean().optional(),
 });
 
+const nullableString = z.union([z.string(), z.null()]).optional();
+
 const csaEmbedImageSchema = z.object({
-  url: z.string().optional(),
+  url: nullableString,
 });
 
 export const csaEmbedSchema = z
   .object({
-    title: z.string().max(256).optional(),
-    description: z.string().max(4096).optional(),
-    url: z.string().optional(),
-    color: z.string().optional(),
-    timestamp: z.string().optional(),
-    thumbnail: csaEmbedImageSchema.optional(),
-    image: csaEmbedImageSchema.optional(),
+    title: z.string().max(256).nullable().optional(),
+    description: z.string().max(4096).nullable().optional(),
+    url: nullableString,
+    color: z.union([z.string(), z.number()]).nullable().optional(),
+    timestamp: z.union([z.string(), z.boolean()]).nullable().optional(),
+    thumbnail: csaEmbedImageSchema.nullable().optional(),
+    image: csaEmbedImageSchema.nullable().optional(),
     author: z
       .object({
-        name: z.string().optional(),
-        url: z.string().optional(),
-        icon_url: z.string().optional(),
+        name: z.string().nullable().optional(),
+        url: nullableString,
+        icon_url: nullableString,
       })
+      .nullable()
       .optional(),
-    fields: z.array(csaEmbedFieldSchema).max(25).optional(),
+    fields: z.array(csaEmbedFieldSchema).max(25).nullable().optional(),
     footer: z
       .object({
-        text: z.string().optional(),
-        icon_url: z.string().optional(),
+        text: z.string().nullable().optional(),
+        icon_url: nullableString,
       })
+      .nullable()
       .optional(),
   })
   .catchall(z.unknown());
 
 export const csaWebhookPayloadSchema = z
   .object({
-    content: z.string().max(2000).optional(),
-    username: z.string().max(80).optional(),
-    avatar_url: z.string().optional(),
-    tts: z.boolean().optional(),
-    embeds: z.array(csaEmbedSchema).max(10).optional(),
+    content: z.string().max(2000).nullable().optional(),
+    username: z.string().max(80).nullable().optional(),
+    avatar_url: nullableString,
+    tts: z.boolean().nullable().optional(),
+    embeds: z.array(csaEmbedSchema).max(10).nullable().optional(),
   })
   .catchall(z.unknown());
 

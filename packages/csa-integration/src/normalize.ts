@@ -27,7 +27,7 @@ export function normalizeCsaEvent(
   payload: CsaWebhookPayload,
   options: NormalizeOptions,
 ): NormalizeResult {
-  const marker = parseMarkerFromContent(payload.content);
+  const marker = parseMarkerFromContent(payload.content ?? undefined);
 
   if (marker && marker.confidence === "high") {
     return { ok: true, event: buildEvent(payload, options, marker.event) };
@@ -100,7 +100,7 @@ function buildEvent(
     coordinates: markerEvent.coordinates,
     nearestPlayer: markerEvent.nearestPlayer,
     parsedConfidence: "high",
-    rawMessage: payload.content,
+    rawMessage: payload.content ?? undefined,
   };
 }
 
