@@ -198,14 +198,18 @@ function normalizeEntry(
 function splitPokemonIdentifier(identifier: string): { pokemon: string; form?: string } {
   const colonIndex = identifier.indexOf(":");
   const bare = colonIndex !== -1 ? (identifier.slice(colonIndex + 1) ?? identifier) : identifier;
+  const withoutConditions = bare
+    .replace(/\s+[a-z_]+\s*=\s*[a-z0-9_-]+(?:\s+[a-z_]+\s*=\s*[a-z0-9_-]+)*\s*$/i, "")
+    .trim();
+  const dashed = withoutConditions.replace(/\s+/g, "-");
   const formMatch =
     /^([a-z0-9-]+?)-(?:wash|heat|frost|fan|mow|origin|altered|attack|defense|speed|alola|galar|hisui|paldea|mega-x|mega-y|crowned|zen|therian|incarnate|white|black|dusk|dawn|ultra)$/i.exec(
-      bare,
+      dashed,
     );
   if (formMatch && formMatch[1] && formMatch[2]) {
     return { pokemon: formMatch[1], form: formMatch[2] };
   }
-  return { pokemon: bare };
+  return { pokemon: dashed };
 }
 
 function parseLevel(level: RawSpawn["level"]): NormalizedLevelRange | undefined {
