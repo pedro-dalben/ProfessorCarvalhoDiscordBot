@@ -67,7 +67,7 @@ async function main(): Promise<void> {
       serverId: config.BIGMONCRAFT_SERVER_ID,
       integrationType: "csa",
       expectedVersion: config.CSA_EXPECTED_SOURCE_VERSION ?? "1.13.2",
-      tokenHash: sha256Hex(config.CSA_SOURCE_TOKEN),
+      tokenHash: config.CSA_SOURCE_TOKEN ? sha256Hex(config.CSA_SOURCE_TOKEN) : undefined,
     });
 
     const tokenHashStored = (await findSourceByKey(db, config.BIGMONCRAFT_SERVER_ID))?.tokenHash;
