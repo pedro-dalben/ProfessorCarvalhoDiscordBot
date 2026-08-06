@@ -79,11 +79,77 @@ function titleCase(value: string): string {
 
 const KNOWN_EXTRA_KEYS_PT: Record<string, string> = {
   minlurelevel: "nível mínimo de isca",
+  maxlurelevel: "nível máximo de isca",
   israining: "chovendo",
   isthundering: "trovejando",
   minperfectivs: "IVs perfeitos mínimos",
   min_perfect_ivs: "IVs perfeitos mínimos",
+  isslimechunk: "chunk de slime",
+  miny: "Y mínimo",
+  maxy: "Y máximo",
+  minx: "X mínimo",
+  maxx: "X máximo",
+  maxlight: "luz máxima",
+  rodtype: "tipo de vara",
+  bait: "isca",
 };
+
+const STRUCTURE_LABELS_PT: Record<string, string> = {
+  "#cobblemon:ruin": "Ruínas",
+  "#cobblemon:ruins/arch": "Arco de ruínas",
+  "cobblemon:ruins/luna_henge_ruins": "Ruínas Luna Henge",
+  "cobblemon:ruins/sol_henge_ruins": "Ruínas Sol Henge",
+  "cobblemon:ruins/stonjourner_henge_ruins": "Ruínas Henge de Stonjourner",
+  "minecraft:monument": "Monumento oceânico",
+  "minecraft:igloo": "Iglu",
+  "minecraft:swamp_hut": "Cabana de bruxa",
+  "minecraft:desert_well": "Poço do deserto",
+  "#minecraft:village": "Aldeia",
+  "#minecraft:shipwreck": "Naufrágio",
+  "#cobblemon:shipwreck_cove": "Enseada de naufrágio",
+  "cobblemon:shipwreck_coves/lush_shipwreck_cove": "Enseada de naufrágio exuberante",
+  "cobblemon:shipwreck_coves/submerged_shipwreck_cove": "Enseada de naufrágio submersa",
+  "#aether:dungeons": "Masmorras do Éter",
+};
+
+const BLOCK_LABELS_PT: Record<string, string> = {
+  "#minecraft:iron_ores": "Minérios de ferro",
+  "#minecraft:diamond_ores": "Minérios de diamante",
+  "#minecraft:corals": "Corais",
+  "#minecraft:coral_blocks": "Blocos de coral",
+  "#cobblemon:saccharine_trees": "Árvores sacarinas",
+  "#cobblemon:flowers": "Flores",
+  "#cobblemon:dead_coral": "Coral morto",
+  "minecraft:cake": "Bolo",
+  "minecraft:sugar_cane": "Cana-de-açúcar",
+  "minecraft:cobweb": "Teia de aranha",
+  "minecraft:wheat": "Trigo",
+  "minecraft:water": "Água",
+  "minecraft:quartz_block": "Bloco de quartzo",
+  "minecraft:bell": "Sino",
+  "aether:present": "Presente",
+};
+
+export function humanizeStructurePt(value: string): string {
+  const known = STRUCTURE_LABELS_PT[value];
+  if (known) return known;
+  const cleaned = value.replace(/^#/, "").split(":").pop()!.replace(/[-_/]+/g, " ");
+  return titleCase(cleaned);
+}
+
+export function humanizeBlockPt(value: string): string {
+  const known = BLOCK_LABELS_PT[value];
+  if (known) return known;
+  const cleaned = value.replace(/^#/, "").split(":").pop()!.replace(/[-_/]+/g, " ");
+  return titleCase(cleaned);
+}
+
+function listOrValue(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => String(item));
+  if (value === undefined || value === null) return [];
+  if (typeof value === "object") return [];
+  return [String(value)];
+}
 
 const BIOME_LABELS_PT: Record<string, string> = {
   aether: "Éter",
@@ -277,9 +343,33 @@ export function describeConditionsPt(
     if (condition.maxDepth !== undefined) parts.push(`máx. ${condition.maxDepth}`);
     summary.push({ label: "Profundidade", value: parts.join(", ") });
   }
-  if (Object.keys(condition.extra).length > 0) {
+  const structures = listOrValue(condition.extra.structures);
+  if (structures.length > 0) {
+    summary.push({
+      label: "Estruturas",
+      value: structures.map(humanizeStructurePt).join(", "),
+    });
+  }
+  const nearbyBlocks = listOrValue(condition.extra.neededNearbyBlocks);
+  if (nearbyBlocks.length > 0) {
+    summary.push({
+      label: "Blocos próximos",
+      value: nearbyBlocks.map(humanizeBlockPt).join(", "),
+    });
+  }
+  const baseBlocks = listOrValue(condition.extra.neededBaseBlocks);
+  if (baseBlocks.length > 0) {
+    summary.push({
+      label: "Blocos de base",
+      value: baseBlocks.map(humanizeBlockPt).join(", "),
+    });
+  }
+  const extraEntries = Object.entries(condition.extra).filter(
+    ([key]) => key !== "structures" && key !== "neededNearbyBlocks" && key !== "neededBaseBlocks",
+  );
+  if (extraEntries.length > 0) {
     const extraParts: string[] = [];
-    for (const [key, value] of Object.entries(condition.extra)) {
+    for (const [key, value] of extraEntries) {
       if (value === true) {
         extraParts.push(humanizeExtraKey(key));
       } else if (value !== false) {
