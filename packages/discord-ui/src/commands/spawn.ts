@@ -34,9 +34,7 @@ export async function handleSpawnCommand(
 
   const normalized = normalizeName(query);
   const queryKey = looseSpeciesKey(normalized);
-  const entries = snapshot.entries.filter(
-    (entry) => looseSpeciesKey(entry.pokemon) === queryKey,
-  );
+  const entries = snapshot.entries.filter((entry) => looseSpeciesKey(entry.pokemon) === queryKey);
 
   if (entries.length === 0) {
     await replyError(interaction, PT_BR.commands.spawn.notFound);
