@@ -74,7 +74,7 @@ export async function importSpawnSnapshot(options: ImporterOptions): Promise<Imp
   }
 
   sortEntries(entries);
-  const contentSha256 = createHash("sha256").update(JSON.stringify(entries), "utf8").digest("hex");
+  const contentSha256 = canonicalHash(entries);
 
   const snapshot: SpawnSnapshot = {
     schemaVersion: SNAPSHOT_SCHEMA_VERSION,
@@ -94,8 +94,7 @@ export async function importSpawnSnapshot(options: ImporterOptions): Promise<Imp
 
 export function verifySnapshotIntegrity(snapshot: SpawnSnapshot): boolean {
   if (snapshot.entryCount !== snapshot.entries.length) return false;
-  const hash = createHash("sha256").update(JSON.stringify(snapshot.entries), "utf8").digest("hex");
-  return hash === snapshot.contentSha256;
+  return canonicalHash(snapshot.entries) === snapshot.contentSha256;
 }
 
 async function collectSpawnPoolFiles(root: string): Promise<string[]> {
@@ -257,7 +256,7 @@ function normalizeConditions(condition: RawSpawnCondition | undefined): Normaliz
     timeRanges: toArray(condition.timeRange ?? condition.timeRanges),
     weathers: toArray(condition.weather ?? condition.weathers),
     moonPhases: toArray(condition.moonPhase ?? condition.moonPhases),
-    extra: {},
+    extra,
   };
   if (condition.minSkyLight !== undefined || condition.maxSkyLight !== undefined) {
     result.skyLight = { minimum: condition.minSkyLight, maximum: condition.maxSkyLight };
@@ -269,8 +268,28 @@ function normalizeConditions(condition: RawSpawnCondition | undefined): Normaliz
   if (condition.canSeeSky !== undefined) result.needsSeeSky = condition.canSeeSky;
   if (condition.maxDepth !== undefined) result.maxDepth = condition.maxDepth;
   if (condition.minDepth !== undefined) result.minDepth = condition.minDepth;
-  result.extra = extra;
   return result;
+}
+
+/**
+ * Serializa com chaves ordenadas recursivamente: o hash de integridade não
+ * depende da ordem de inserção das propriedades (o Zod reconstrói objetos na
+ * ordem do schema, o que invalida qualquer hash baseado na ordem do arquivo).
+ */
+function canonicalHash(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(sortKeys(value)), "utf8").digest("hex");
+}
+
+function sortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, nested]) => [key, sortKeys(nested)]),
+    );
+  }
+  return value;
 }
 
 function toArray(value: string | string[] | undefined): string[] {
