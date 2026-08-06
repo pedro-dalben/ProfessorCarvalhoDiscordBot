@@ -1,6 +1,7 @@
 import { escapeMarkdown, normalizeName } from "@bigbangcraft/domain";
 import type { SpawnSnapshot, NormalizedSpawnEntry } from "@bigbangcraft/cobblemon-data";
 import { describeEntryPt, humanizeRarityPt } from "@bigbangcraft/cobblemon-data";
+import type { PokemonProvider } from "@bigbangcraft/pokemon-data";
 import type { ChatInputCommandInteraction, APIEmbedField } from "discord.js";
 import { PT_BR } from "../messages/pt-BR.js";
 import { replySuccess, replyError } from "../replies.js";
@@ -12,6 +13,7 @@ export interface SpawnSnapshotAccess {
 export async function handleSpawnCommand(
   interaction: ChatInputCommandInteraction,
   snapshotAccess: SpawnSnapshotAccess,
+  provider?: PokemonProvider,
 ): Promise<void> {
   const query = interaction.options.getString("pokemon", true).trim();
   if (!query) {
@@ -33,8 +35,18 @@ export async function handleSpawnCommand(
     return;
   }
 
+  let spriteUrl: string | undefined;
+  if (provider) {
+    try {
+      const details = await provider.findPokemon(entries[0]!.pokemon);
+      spriteUrl = details?.spriteUrl;
+    } catch {
+      spriteUrl = undefined;
+    }
+  }
+
   const grouped = groupSpawnEntries(entries);
-  const embed = buildSpawnEmbed(grouped, snapshot);
+  const embed = buildSpawnEmbed(grouped, snapshot, spriteUrl);
   await replySuccess(interaction, { embeds: [embed] });
 }
 
@@ -88,7 +100,14 @@ function speciesDisplayName(entry: NormalizedSpawnEntry): string {
 export function buildSpawnEmbed(
   entries: readonly NormalizedSpawnEntry[],
   snapshot: SpawnSnapshot,
-): { title: string; color: number; fields: APIEmbedField[]; footer: { text: string } } {
+  spriteUrl?: string,
+): {
+  title: string;
+  color: number;
+  fields: APIEmbedField[];
+  footer: { text: string };
+  thumbnail?: { url: string };
+} {
   const t = PT_BR.commands.spawn;
 
   const fields: APIEmbedField[] = [];
@@ -120,5 +139,6 @@ export function buildSpawnEmbed(
     color: 0x2ecc71,
     fields,
     footer: { text: footerParts.join(" • ") },
+    ...(spriteUrl ? { thumbnail: { url: spriteUrl } } : {}),
   };
 }

@@ -55,9 +55,13 @@ export function createInteractionHandler(
           await handleFraquezasCommand(commandInteraction, deps.provider);
           break;
         case "spawn":
-          await handleSpawnCommand(commandInteraction, {
-            getSnapshot: () => deps.statusService.getSnapshot(),
-          });
+          await handleSpawnCommand(
+            commandInteraction,
+            {
+              getSnapshot: () => deps.statusService.getSnapshot(),
+            },
+            deps.provider,
+          );
           break;
         case "ajuda": {
           const snap = deps.statusService.getSnapshotStatus();
