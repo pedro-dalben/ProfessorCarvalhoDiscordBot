@@ -1,0 +1,12 @@
+{
+  "testOnlySecret": "test-only-secret-not-for-production",
+  "method": "POST",
+  "path": "/v1/gateway/events",
+  "serverId": "bigmoncraft",
+  "timestamp": "1786050000000",
+  "requestId": "019abcdef-1234-7abc-8def-0123456789ab",
+  "gatewayVersion": "1",
+  "body": "{\"eventId\":\"018f47a0-1234-7abc-8def-0123456789ab\",\"eventType\":\"player.session.started\",\"schemaVersion\":\"1\",\"serverId\":\"bigmoncraft\",\"occurredAt\":\"2026-08-06T19:30:00.000Z\",\"payload\":{\"minecraftUuid\":\"123e4567-e89b-12d3-a456-426614174000\",\"minecraftName\":\"José\"}}",
+  "bodySha256": "202d3dd15270b7553a3e0437069f0fc87b3eab0d654abd1c53ced2fe91bcf4cb",
+  "signature": "b13fc46da455086f5ee9f9604acf9f41b4e4120b53a8e386bd59153bca2f5875"
+}
