@@ -77,15 +77,17 @@ export class SnapshotImportError extends Error {
   }
 }
 
+const stringOrArray = z.union([z.string(), z.array(z.string())]);
+
 const rawConditionSchema = z
   .object({
     biomes: z.array(z.string()).optional(),
-    timeRange: z.array(z.string()).optional(),
-    timeRanges: z.array(z.string()).optional(),
-    weather: z.array(z.string()).optional(),
-    weathers: z.array(z.string()).optional(),
-    moonPhase: z.array(z.string()).optional(),
-    moonPhases: z.array(z.string()).optional(),
+    timeRange: stringOrArray.optional(),
+    timeRanges: stringOrArray.optional(),
+    weather: stringOrArray.optional(),
+    weathers: stringOrArray.optional(),
+    moonPhase: stringOrArray.optional(),
+    moonPhases: stringOrArray.optional(),
     minSkyLight: z.number().optional(),
     maxSkyLight: z.number().optional(),
     minBlockLight: z.number().optional(),
@@ -100,7 +102,7 @@ const rawConditionSchema = z
 const rawSpawnSchema = z
   .object({
     id: z.string(),
-    pokemon: z.string(),
+    pokemon: z.string().optional(),
     presets: z.array(z.string()).optional(),
     type: z.string().optional(),
     spawnablePositionType: z.string().optional(),

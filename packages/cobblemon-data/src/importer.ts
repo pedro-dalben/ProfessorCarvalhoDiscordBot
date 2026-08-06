@@ -57,6 +57,9 @@ export async function importSpawnSnapshot(options: ImporterOptions): Promise<Imp
       sourcePaths.push(relative);
       const namespace = namespaceFromPath(relative);
       for (const spawn of validated.data.spawns) {
+        if (!spawn.pokemon) {
+          continue;
+        }
         entries.push(normalizeEntry(spawn, validated.data, namespace, relative, sha256));
       }
     } catch (error) {
@@ -146,6 +149,9 @@ function normalizeEntry(
   relativeFile: string,
   sha256: string,
 ): NormalizedSpawnEntry {
+  if (!spawn.pokemon) {
+    throw new Error(`Entrada de spawn sem espécie (${spawn.id ?? "id desconhecido"}).`);
+  }
   const { pokemon, form } = splitPokemonIdentifier(spawn.pokemon);
   const handledKeys = new Set([
     "id",
@@ -248,9 +254,9 @@ function normalizeConditions(condition: RawSpawnCondition | undefined): Normaliz
   }
   const result: NormalizedSpawnConditions = {
     biomes: condition.biomes ?? [],
-    timeRanges: condition.timeRange ?? condition.timeRanges ?? [],
-    weathers: condition.weather ?? condition.weathers ?? [],
-    moonPhases: condition.moonPhase ?? condition.moonPhases ?? [],
+    timeRanges: toArray(condition.timeRange ?? condition.timeRanges),
+    weathers: toArray(condition.weather ?? condition.weathers),
+    moonPhases: toArray(condition.moonPhase ?? condition.moonPhases),
     extra,
   };
   if (condition.minSkyLight !== undefined || condition.maxSkyLight !== undefined) {
@@ -264,6 +270,15 @@ function normalizeConditions(condition: RawSpawnCondition | undefined): Normaliz
   if (condition.maxDepth !== undefined) result.maxDepth = condition.maxDepth;
   if (condition.minDepth !== undefined) result.minDepth = condition.minDepth;
   return result;
+}
+
+function toArray(value: string | string[] | undefined): string[] {
+  if (value === undefined) return [];
+  if (Array.isArray(value)) return value.map((item) => item.trim()).filter(Boolean);
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function sortEntries(entries: NormalizedSpawnEntry[]): void {
