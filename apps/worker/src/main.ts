@@ -4,10 +4,7 @@ import { parseEnv } from "@bigbangcraft/config";
 import { createLogger, createMetrics, ShutdownManager } from "@bigbangcraft/observability";
 import {
   createDatabaseClient,
-  createSpawnEvent,
-  findSpawnEventByIntegrationEventId,
   cleanupExpiredEvents,
-  markEventProcessed,
   markEventFailed,
 } from "@bigbangcraft/database";
 import {
@@ -20,10 +17,21 @@ import {
   type CleanupExpiredEventsPayload,
 } from "@bigbangcraft/queue";
 import { Worker, type Job } from "bullmq";
-import { normalizeCsaEvent, type CsaWebhookPayload } from "@bigbangcraft/csa-integration";
-import { buildSpawnAlertEmbed } from "@bigbangcraft/discord-ui";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v10";
+import { processCsaJob, deliverDiscordJob, type DiscordSender } from "./handlers.js";
+
+function createDiscordSender(token: string): DiscordSender {
+  const rest = new REST({ version: "10" }).setToken(token);
+  return {
+    async send(channelId, body) {
+      const result = (await rest.post(Routes.channelMessages(channelId), {
+        body,
+      })) as { id: string };
+      return { id: result.id };
+    },
+  };
+}
 
 function main(): void {
   const config = parseEnv();
@@ -49,89 +57,27 @@ function main(): void {
   });
   const queues = createQueues(redisClient, config.REDIS_KEY_PREFIX);
 
+  const discordSender = config.DISCORD_TOKEN ? createDiscordSender(config.DISCORD_TOKEN) : null;
+
   const spawnWorker = new Worker<ProcessCsaAlertPayload>(
     QUEUE_NAMES.SPAWN_ALERTS,
     async (job: Job<ProcessCsaAlertPayload>) => {
-      const { eventId, rawPayload, sourceVersion, serverId } = job.data;
-      logger.info({ eventId }, "Processando alerta CSA.");
+      const { eventId, sourceId, sourceVersion, serverId } = job.data;
+      logger.info({ eventId, sourceId }, "Processando alerta CSA.");
 
-      const payload = rawPayload as unknown as CsaWebhookPayload;
-      const event = normalizeCsaEvent(payload, { sourceVersion, serverId });
+      const result = await processCsaJob(
+        db,
+        config,
+        { eventId, sourceId, sourceVersion, serverId },
+        async (deliveryJob) => {
+          await queues.spawnDelivery.add(JOB_NAMES.DELIVER_DISCORD_SPAWN_ALERT, deliveryJob);
+        },
+      );
 
-      if (config.SPAWN_COORDINATE_POLICY === "hidden") {
-        event.coordinates = undefined;
-      } else if (config.SPAWN_COORDINATE_POLICY === "region") {
-        // coordinates preserved for region-based delivery
-      } else {
-        if (!config.SPAWN_STORE_EXACT_COORDINATES) {
-          event.coordinates = undefined;
-        }
-      }
-
-      if (!config.SPAWN_SHOW_NEAREST_PLAYER) {
-        event.nearestPlayer = undefined;
-      }
-
-      const existing = await findSpawnEventByIntegrationEventId(db, eventId);
-      if (existing) {
-        logger.info(
-          { eventId },
-          "spawn_events já existe para este integration_event — idempotente.",
-        );
-        await markEventProcessed(db, eventId);
-        return;
-      }
-
-      const spawnEvent = await createSpawnEvent(db, {
-        integrationEventId: eventId,
-        serverId: event.serverId,
-        species: event.species,
-        form: event.form,
-        dexNumber: event.dexNumber,
-        level: event.level,
-        shiny: event.shiny,
-        legendary: event.legendary,
-        mythical: event.mythical,
-        ultraBeast: event.ultraBeast,
-        paradox: event.paradox,
-        rarity: event.rarity,
-        bucket: event.bucket,
-        biome: event.biome,
-        dimension: event.dimension,
-        coordinateRegion:
-          event.coordinates?.x !== undefined && event.coordinates?.z !== undefined
-            ? `${event.coordinates.x},${event.coordinates.z}`
-            : undefined,
-        occurredAt: new Date(event.receivedAt),
-      });
-
-      await markEventProcessed(db, eventId);
-
-      const alertChannelId = config.DISCORD_SPAWN_ALERT_CHANNEL_ID;
-      if (alertChannelId && config.DISCORD_TOKEN) {
-        const roleIds: string[] = [];
-        if (event.shiny && config.DISCORD_SHINY_ALERT_ROLE_ID) {
-          roleIds.push(config.DISCORD_SHINY_ALERT_ROLE_ID);
-        }
-        if (
-          (event.legendary || event.mythical || event.ultraBeast) &&
-          config.DISCORD_LEGENDARY_ALERT_ROLE_ID
-        ) {
-          roleIds.push(config.DISCORD_LEGENDARY_ALERT_ROLE_ID);
-        }
-
-        await queues.spawnDelivery.add(JOB_NAMES.DELIVER_DISCORD_SPAWN_ALERT, {
-          spawnEventId: spawnEvent?.id ?? eventId,
-          channelId: alertChannelId,
-          roleIds,
-          coordinatePolicy: config.SPAWN_COORDINATE_POLICY,
-          regionGridSize: config.SPAWN_REGION_GRID_SIZE,
-          showNearestPlayer: config.SPAWN_SHOW_NEAREST_PLAYER,
-          serverAddress: config.BIGMONCRAFT_SERVER_ADDRESS,
-        });
-      }
-
-      logger.info({ eventId, species: event.species }, "Alerta CSA processado.");
+      logger.info(
+        { eventId, spawnEventId: result.spawnEventId, skipped: result.skipped },
+        "Alerta CSA processado.",
+      );
     },
     {
       connection: redisClient,
@@ -159,84 +105,22 @@ function main(): void {
   const deliveryWorker = new Worker<DeliverDiscordSpawnAlertPayload>(
     QUEUE_NAMES.SPAWN_DELIVERY,
     async (job: Job<DeliverDiscordSpawnAlertPayload>) => {
-      const {
-        spawnEventId,
-        channelId,
-        roleIds,
-        coordinatePolicy,
-        regionGridSize,
-        showNearestPlayer,
-        serverAddress,
-      } = job.data;
+      const data = job.data;
 
-      if (!config.DISCORD_TOKEN) {
+      if (!discordSender) {
         logger.warn("DISCORD_TOKEN não configurado. Entrega de alerta ignorada.");
         return;
       }
 
-      const importDeps = await import("@bigbangcraft/database");
-      const dbClient = db;
-      const spawnRow = await importDeps.findSpawnEventByIntegrationEventId(dbClient, spawnEventId);
-
-      const embed = buildSpawnAlertEmbed(
+      const result = await deliverDiscordJob(db, discordSender, metrics, config, data);
+      logger.info(
         {
-          source: "csa",
-          sourceVersion: config.CSA_EXPECTED_SOURCE_VERSION,
-          serverId: config.BIGMONCRAFT_SERVER_ID,
-          receivedAt: spawnRow?.occurredAt?.toISOString() ?? new Date().toISOString(),
-          species: spawnRow?.species ?? undefined,
-          displayName: spawnRow?.species ?? undefined,
-          dexNumber: spawnRow?.dexNumber ?? undefined,
-          level: spawnRow?.level ?? undefined,
-          shiny: spawnRow?.shiny ?? false,
-          legendary: spawnRow?.legendary ?? false,
-          mythical: spawnRow?.mythical ?? false,
-          ultraBeast: spawnRow?.ultraBeast ?? false,
-          paradox: spawnRow?.paradox ?? false,
-          bucket: spawnRow?.bucket ?? undefined,
-          biome: spawnRow?.biome ?? undefined,
-          dimension: spawnRow?.dimension ?? undefined,
-          coordinates: spawnRow?.coordinateRegion
-            ? {
-                x: parseCoordinate(spawnRow.coordinateRegion, "x"),
-                z: parseCoordinate(spawnRow.coordinateRegion, "z"),
-              }
-            : undefined,
+          spawnEventId: data.spawnEventId,
+          delivered: result.delivered,
+          discordMessageId: result.discordMessageId,
         },
-        { coordinatePolicy, regionGridSize, showNearestPlayer, serverAddress },
+        "Resultado da entrega de alerta de spawn.",
       );
-
-      if (!embed) return;
-
-      const allowedMentions = {
-        parse: [] as never[],
-        roles: roleIds.filter(Boolean),
-      };
-
-      const rest = new REST({ version: "10" }).setToken(config.DISCORD_TOKEN);
-
-      try {
-        await rest.post(Routes.channelMessages(channelId), {
-          body: {
-            embeds: [embed],
-            allowed_mentions: allowedMentions,
-          },
-        });
-        const tierLabel = embed.title.includes("shiny")
-          ? "shiny"
-          : embed.title.includes("raro") || embed.title.includes("legendary")
-            ? "rare"
-            : "standard";
-        metrics.spawnAlertDeliveredTotal.labels(tierLabel, config.BIGMONCRAFT_SERVER_ID).inc();
-        logger.info({ channelId, spawnEventId }, "Alerta de spawn entregue no Discord.");
-      } catch (error) {
-        metrics.spawnAlertFailedTotal.labels("discord-error", "delivery").inc();
-        logger.error(
-          { err: error, channelId, spawnEventId },
-          "Falha ao entregar alerta no Discord.",
-        );
-        throw error;
-      }
     },
     {
       connection: redisClient,
@@ -297,14 +181,6 @@ function main(): void {
   shutdownManager.installSignalHandlers();
 
   logger.info("Professor Carvalho (worker) pronto.");
-}
-
-function parseCoordinate(region: string, axis: "x" | "z"): number | undefined {
-  const parts = region.split(",");
-  const raw = axis === "x" ? parts[0] : parts[1];
-  if (!raw) return undefined;
-  const num = Number.parseFloat(raw);
-  return Number.isFinite(num) ? num : undefined;
 }
 
 process.on("uncaughtException", (error) => {

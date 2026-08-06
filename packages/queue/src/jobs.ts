@@ -37,7 +37,6 @@ export function buildDefaultJobOptions(): DefaultJobOptions {
 export interface ProcessCsaAlertPayload {
   eventId: string;
   sourceId: string;
-  rawPayload: Record<string, unknown>;
   sourceVersion: string;
   serverId: string;
 }
@@ -48,7 +47,6 @@ export interface DeliverDiscordSpawnAlertPayload {
   roleIds: string[];
   coordinatePolicy: "hidden" | "region" | "exact_admin_only";
   regionGridSize: number;
-  showNearestPlayer: boolean;
   serverAddress: string;
 }
 
