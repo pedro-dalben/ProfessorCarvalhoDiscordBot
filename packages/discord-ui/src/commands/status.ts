@@ -16,6 +16,17 @@ export interface StatusContext {
   csaMode: string;
   queueSummary: { queue: string; waiting: number; active: number; failed: number }[];
   appVersion: string;
+  gateway: {
+    online: boolean;
+    heartbeatAgeSeconds: number | null;
+    gatewayVersion: string | null;
+    onlinePlayers: number | null;
+    linkedPlayersOnline: number | null;
+    spoolPending: number | null;
+    deadLetterCount: number | null;
+    bigBangEssentials: boolean | null;
+    cobblemon: boolean | null;
+  };
 }
 
 export async function handleStatusCommand(
@@ -94,6 +105,59 @@ export async function handleStatusCommand(
   }
 
   fields.push({ name: t.labels.version, value: escapeMarkdown(context.appVersion), inline: true });
+  fields.push({
+    name: t.labels.gateway,
+    value: context.gateway.online ? `🟢 ${t.online}` : `🔴 ${t.offline}`,
+    inline: true,
+  });
+  if (context.gateway.heartbeatAgeSeconds !== null)
+    fields.push({
+      name: t.labels.gatewayHeartbeat,
+      value: escapeMarkdown(`${context.gateway.heartbeatAgeSeconds}s atrás`),
+      inline: true,
+    });
+  if (context.gateway.gatewayVersion)
+    fields.push({
+      name: t.labels.gatewayVersion,
+      value: escapeMarkdown(context.gateway.gatewayVersion),
+      inline: true,
+    });
+  if (context.gateway.onlinePlayers !== null)
+    fields.push({
+      name: t.labels.gatewayPlayers,
+      value: String(context.gateway.onlinePlayers),
+      inline: true,
+    });
+  if (context.gateway.linkedPlayersOnline !== null)
+    fields.push({
+      name: t.labels.gatewayLinkedPlayers,
+      value: String(context.gateway.linkedPlayersOnline),
+      inline: true,
+    });
+  if (context.gateway.spoolPending !== null)
+    fields.push({
+      name: t.labels.gatewayQueue,
+      value: String(context.gateway.spoolPending),
+      inline: true,
+    });
+  if (context.gateway.deadLetterCount !== null)
+    fields.push({
+      name: t.labels.gatewayDeadLetter,
+      value: String(context.gateway.deadLetterCount),
+      inline: true,
+    });
+  if (context.gateway.bigBangEssentials !== null)
+    fields.push({
+      name: t.labels.gatewayEssentials,
+      value: context.gateway.bigBangEssentials ? `🟢 ${t.online}` : `🔴 ${t.offline}`,
+      inline: true,
+    });
+  if (context.gateway.cobblemon !== null)
+    fields.push({
+      name: t.labels.gatewayCobblemon,
+      value: context.gateway.cobblemon ? `🟢 ${t.online}` : `🔴 ${t.offline}`,
+      inline: true,
+    });
 
   await replySuccess(interaction, {
     embeds: [

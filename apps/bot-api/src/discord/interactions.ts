@@ -11,12 +11,20 @@ import {
   handlePokemonAutocomplete,
 } from "@bigbangcraft/discord-ui";
 import type { StatusService } from "../main.js";
+import {
+  handleIdentityButton,
+  handleLinkCommand,
+  handleProfileCommand,
+  handleUnlinkCommand,
+  type IdentityDeps,
+} from "./identity.js";
 
 export interface InteractionDeps {
   logger: AppLogger;
   provider: PokemonProvider;
   ranker: AutocompleteRanker;
   statusService: StatusService;
+  identity: IdentityDeps;
 }
 
 export function createInteractionHandler(
@@ -32,6 +40,21 @@ export function createInteractionHandler(
       return;
     }
 
+    if (interaction.isButton()) {
+      try {
+        await handleIdentityButton(interaction, deps.identity);
+      } catch (error) {
+        deps.logger.error({ err: error }, "Erro ao processar confirmação de identidade.");
+        if (!interaction.replied && !interaction.deferred)
+          await interaction.reply({
+            content: "Não consegui concluir essa operação.",
+            flags: "Ephemeral",
+            allowedMentions: { parse: [] },
+          });
+      }
+      return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
     const commandInteraction = interaction;
@@ -39,9 +62,14 @@ export function createInteractionHandler(
 
     let deferred = false;
     try {
-      const needsDefer = ["dex", "fraquezas", "spawn", "ajuda", "status-professor"].includes(
-        commandName,
-      );
+      const needsDefer = [
+        "dex",
+        "fraquezas",
+        "spawn",
+        "ajuda",
+        "status-professor",
+        "perfil",
+      ].includes(commandName);
       if (needsDefer) {
         await commandInteraction.deferReply();
         deferred = true;
@@ -80,6 +108,7 @@ export function createInteractionHandler(
             deps.statusService.getWorkerHeartbeatAgeSeconds(),
           ]);
           const snap = deps.statusService.getSnapshotStatus();
+          const gateway = await deps.statusService.getGatewayStatus();
           await handleStatusCommand(commandInteraction, {
             discordReady: deps.statusService.getDiscordReady(),
             databaseReachable: dbReachable,
@@ -93,9 +122,19 @@ export function createInteractionHandler(
             csaMode: deps.statusService.getCsaMode(),
             queueSummary,
             appVersion: deps.statusService.getAppVersion(),
+            gateway,
           });
           break;
         }
+        case "vincular":
+          await handleLinkCommand(commandInteraction, deps.identity);
+          break;
+        case "perfil":
+          await handleProfileCommand(commandInteraction, deps.identity);
+          break;
+        case "desvincular":
+          await handleUnlinkCommand(commandInteraction, deps.identity);
+          break;
         default:
           break;
       }

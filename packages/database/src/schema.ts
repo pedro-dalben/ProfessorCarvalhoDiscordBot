@@ -142,3 +142,101 @@ export const workerHeartbeats = pgTable(
     ),
   }),
 );
+
+export const identityLinks = pgTable("identity_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  discordUserId: text("discord_user_id").notNull(),
+  guildId: text("guild_id").notNull(),
+  minecraftUuid: uuid("minecraft_uuid").notNull(),
+  minecraftName: text("minecraft_name").notNull(),
+  serverId: text("server_id").notNull(),
+  status: text("status").notNull().default("active"),
+  linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+  unlinkedAt: timestamp("unlinked_at", { withTimezone: true }),
+  unlinkedBy: text("unlinked_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const identityLinkCodes = pgTable("identity_link_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  codeHash: text("code_hash").notNull().unique(),
+  discordUserId: text("discord_user_id").notNull(),
+  guildId: text("guild_id").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  maximumAttempts: integer("maximum_attempts").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const identityLinkAudit = pgTable("identity_link_audit", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  linkId: uuid("link_id"),
+  action: text("action").notNull(),
+  discordUserId: text("discord_user_id"),
+  minecraftUuid: uuid("minecraft_uuid"),
+  serverId: text("server_id").notNull(),
+  actorType: text("actor_type").notNull(),
+  actorId: text("actor_id"),
+  reason: text("reason"),
+  metadata: jsonb("metadata").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const gatewayEvents = pgTable("gateway_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().unique(),
+  requestId: uuid("request_id").notNull(),
+  serverId: text("server_id").notNull(),
+  eventType: text("event_type").notNull(),
+  schemaVersion: text("schema_version").notNull(),
+  bodyHash: text("body_hash").notNull(),
+  status: text("status").notNull(),
+  payload: jsonb("payload").notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  errorCode: text("error_code"),
+});
+
+export const gatewayServers = pgTable("gateway_servers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  serverId: text("server_id").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  protocolVersion: text("protocol_version").notNull(),
+  lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
+  gatewayVersion: text("gateway_version"),
+  minecraftVersion: text("minecraft_version"),
+  fabricVersion: text("fabric_version"),
+  cobblemonVersion: text("cobblemon_version"),
+  bigbangessentialsVersion: text("bigbangessentials_version"),
+  statusPayload: jsonb("status_payload"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const playerProfileSnapshots = pgTable(
+  "player_profile_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    linkId: uuid("link_id").notNull(),
+    minecraftUuid: uuid("minecraft_uuid").notNull(),
+    minecraftName: text("minecraft_name").notNull(),
+    serverId: text("server_id").notNull(),
+    snapshotVersion: text("snapshot_version").notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    gatewayVersion: text("gateway_version"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    linkServerUnique: uniqueIndex("player_profile_snapshots_link_server_unique").on(
+      table.linkId,
+      table.serverId,
+    ),
+  }),
+);
