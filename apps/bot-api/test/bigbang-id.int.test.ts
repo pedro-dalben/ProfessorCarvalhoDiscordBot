@@ -13,6 +13,8 @@ import {
   createIdentityLinkCode,
   findActiveIdentity,
   getLatestProfileSnapshot,
+  findGatewayServer,
+  unlinkIdentity,
 } from "@bigbangcraft/database";
 import { hashLinkCode } from "../src/identity/crypto.js";
 import { createHash, createHmac } from "node:crypto";
@@ -147,6 +149,57 @@ describe("BigBang ID e gateway v1", () => {
     expect(snapshot).not.toBeNull();
     expect(JSON.stringify(snapshot!.snapshot)).not.toContain("secretField");
     expect(JSON.stringify(snapshot!.snapshot)).not.toContain("192.0.2.1");
+
+    const duplicate = await signedPost(
+      api.url,
+      "/v1/gateway/profiles",
+      profileBody,
+      config,
+      "123e4567-e89b-42d3-a456-426614174004",
+    );
+    expect(((await duplicate.json()) as { duplicate: boolean }).duplicate).toBe(true);
+    const conflictBody = profileBody.replace('"secretField":"remove"', '"secretField":"altered"');
+    const conflict = await signedPost(
+      api.url,
+      "/v1/gateway/profiles",
+      conflictBody,
+      config,
+      "123e4567-e89b-42d3-a456-426614174005",
+    );
+    expect(conflict.status).toBe(409);
+
+    const heartbeat = await signedPost(
+      api.url,
+      "/v1/gateway/heartbeat",
+      JSON.stringify({
+        gatewayVersion: "0.1.0",
+        protocolVersion: "1",
+        onlinePlayers: 1,
+        linkedPlayersOnline: 1,
+        modules: { bigBangEssentials: true, cobblemon: true },
+      }),
+      config,
+      "123e4567-e89b-42d3-a456-426614174006",
+    );
+    expect(((await heartbeat.json()) as { accepted: boolean }).accepted).toBe(true);
+    expect((await findGatewayServer(db, config.BIGMONCRAFT_SERVER_ID))?.gatewayVersion).toBe(
+      "0.1.0",
+    );
+
+    await unlinkIdentity(db, {
+      discordUserId: "123456789012345678",
+      serverId: config.BIGMONCRAFT_SERVER_ID,
+      actorId: "123456789012345678",
+    });
+    const afterUnlinkBody = profileBody.replace(eventId, "123e4567-e89b-42d3-a456-426614174007");
+    const afterUnlink = await signedPost(
+      api.url,
+      "/v1/gateway/profiles",
+      afterUnlinkBody,
+      config,
+      "123e4567-e89b-42d3-a456-426614174008",
+    );
+    expect(((await afterUnlink.json()) as { code: string }).code).toBe("IDENTITY_NOT_LINKED");
   });
 });
 
