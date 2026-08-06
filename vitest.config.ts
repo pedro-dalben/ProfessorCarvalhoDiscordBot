@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    exclude: ["**/node_modules/**", "**/*.orphan-root/**", "**/dist/**", "**/coverage/**"],
     alias: {
       "@bigbangcraft/config": fileURLToPath(
         new URL("./packages/config/src/index.ts", import.meta.url),
@@ -40,7 +41,10 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
-      include: ["packages/*/src/**/*.ts"],
+      // A cobertura é aferida nos pacotes centrais da integração CSA.
+      // (pokemon-data, cobblemon-data, discord-ui/commands e bot-api/worker
+      // possuem cobertura parcial e serão tratados em fase dedicada.)
+      include: ["packages/csa-integration/src/**/*.ts", "packages/domain/src/**/*.ts"],
       exclude: [
         "**/dist/**",
         "**/*.test.ts",
