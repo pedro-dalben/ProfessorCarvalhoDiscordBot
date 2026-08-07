@@ -43,7 +43,7 @@ services:
     env_file:
       - .env
     ports:
-      - "127.0.0.1:3080:3000"
+      - "10.8.0.1:3080:3000"
     depends_on:
       postgres:
         condition: service_healthy
