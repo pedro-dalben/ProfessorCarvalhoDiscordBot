@@ -110,7 +110,7 @@ export async function handleProfileCommand(
   const fields = profileFields(data, journeyStats);
   const stale =
     Date.now() - snapshot.capturedAt.getTime() > deps.config.IDENTITY_PROFILE_STALE_SECONDS * 1000;
-  await replySuccess(interaction, {
+  await replyEphemeral(interaction, {
     embeds: [
       {
         title: `👤 Ficha de Treinador — ${escapeMarkdown(snapshot.minecraftName)}`,

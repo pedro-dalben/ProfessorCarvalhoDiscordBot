@@ -74,12 +74,18 @@ export function createInteractionHandler(
         "spawn",
         "ajuda",
         "status-professor",
+      ];
+      const needsEphemeralDefer = [
         "perfil",
         "diario",
         "estatisticas",
-      ].includes(commandName);
-      if (needsDefer) {
+      ];
+      if (needsDefer.includes(commandName)) {
         await commandInteraction.deferReply();
+        deferred = true;
+      }
+      if (needsEphemeralDefer.includes(commandName)) {
+        await commandInteraction.deferReply({ flags: "Ephemeral" });
         deferred = true;
       }
 

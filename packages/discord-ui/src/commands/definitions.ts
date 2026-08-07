@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 import { PT_BR } from "../messages/pt-BR.js";
 
 export const dexCommand = new SlashCommandBuilder()
@@ -40,7 +40,8 @@ export const ajudaCommand = new SlashCommandBuilder()
 
 export const statusCommand = new SlashCommandBuilder()
   .setName(PT_BR.commands.status.name)
-  .setDescription(PT_BR.commands.status.description);
+  .setDescription(PT_BR.commands.status.description)
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export const linkCommand = new SlashCommandBuilder()
   .setName(PT_BR.identity.link.name)

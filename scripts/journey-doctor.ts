@@ -1,5 +1,5 @@
 import "dotenv/config";
-import pg from "pg";
+import { createDatabaseClient } from "../packages/database/src/client.js";
 
 /* eslint-disable no-console */
 async function main(): Promise<void> {
@@ -10,7 +10,12 @@ async function main(): Promise<void> {
   }
   const serverId = process.env.BIGMONCRAFT_SERVER_ID ?? "bigmoncraft";
 
-  const pool = new pg.Pool({ connectionString, max: 1 });
+  const { db, pool } = createDatabaseClient({
+    connectionString,
+    poolMax: 1,
+    connectionTimeoutMs: 5000,
+    statementTimeoutMs: 10000,
+  });
 
   try {
     await runDoctor(pool, serverId);
@@ -20,41 +25,32 @@ async function main(): Promise<void> {
 }
 
 async function runDoctor(
-  pool: pg.Pool,
+  pool: ReturnType<typeof createDatabaseClient>["pool"],
   serverId: string,
 ): Promise<void> {
   console.log("Player Journey Doctor\n");
   console.log(`Server: ${serverId}\n`);
 
-  let gatewayOk = false;
+  console.log("Gateway:");
   try {
     const result = await pool.query(
-      `SELECT count(*) as cnt FROM gateway_servers WHERE server_id = $1`,
+      `SELECT server_id, last_heartbeat_at, gateway_version FROM gateway_servers WHERE server_id = $1`,
       [serverId],
     );
-    const cnt = Number(result.rows[0]?.cnt ?? 0);
-    gatewayOk = cnt > 0;
-
-    const heartbeat = await pool.query(
-      `SELECT last_heartbeat_at FROM gateway_servers WHERE server_id = $1`,
-      [serverId],
-    );
-    if (heartbeat.rows[0]?.last_heartbeat_at) {
+    if (result.rows[0]) {
+      const row = result.rows[0];
       const age = Math.floor(
-        (Date.now() - new Date(heartbeat.rows[0].last_heartbeat_at).getTime()) / 1000,
+        (Date.now() - new Date(row.last_heartbeat_at).getTime()) / 1000,
       );
-      console.log(
-        `Gateway: ${gatewayOk ? "ONLINE" : "OFFLINE"} (heartbeat ${age}s ago)`,
-      );
+      console.log(`  ${age < 90 ? "ONLINE" : "OFFLINE"} (heartbeat ${age}s ago, v${row.version})`);
     } else {
-      console.log(`Gateway: ${gatewayOk ? "ONLINE" : "OFFLINE"}`);
+      console.log("  OFFLINE (no heartbeat received)");
     }
-  } catch {
-    console.log("Gateway: UNKNOWN (query error)");
+  } catch (err) {
+    console.log(`  UNKNOWN (${(err as Error).message})`);
   }
 
   console.log("\nEvent Coverage:");
-
   const eventTypes = [
     "player.session.started",
     "player.session.ended",
@@ -70,67 +66,51 @@ async function runDoctor(
 
   for (const eventType of eventTypes) {
     const result = await pool.query(
-      `SELECT count(*) as cnt, max(occurred_at) as last_seen
+      `SELECT count(*)::int as cnt, max(occurred_at) as last_seen
        FROM game_events
        WHERE event_type = $1 AND server_id = $2`,
       [eventType, serverId],
     );
-    const cnt = Number(result.rows[0]?.cnt ?? 0);
-    const lastSeen = result.rows[0]?.last_seen as string | null;
+    const cnt = result.rows[0].cnt;
+    const last = result.rows[0].last_seen;
     const label = eventType.split(".").slice(1).join(".");
-    const mark = cnt > 0 ? "YES" : (gatewayOk ? "WAITING" : "NO_DATA");
-    console.log(`  ${label}: ${cnt} events (${mark})${lastSeen ? ` last ${new Date(lastSeen).toISOString()}` : ""}`);
+    const mark = cnt > 0 ? " YES" : " ---";
+    const lastStr = last ? ` last ${new Date(last).toISOString()}` : "";
+    console.log(`  [${mark}] ${label}: ${cnt}${lastStr}`);
   }
 
   console.log("\nProjections:");
+  const entries = await pool.query("SELECT count(*)::int as cnt FROM player_journey_entries");
+  const stats = await pool.query("SELECT count(*)::int as cnt FROM player_journey_stats");
+  const species = await pool.query("SELECT count(*)::int as cnt FROM player_captured_species");
+  const totalEvents = await pool.query(
+    "SELECT count(*)::int as cnt FROM game_events WHERE server_id = $1",
+    [serverId],
+  );
 
-  const entryCount = await pool.query(`SELECT count(*) as cnt FROM player_journey_entries`);
-  const statsCount = await pool.query(`SELECT count(*) as cnt FROM player_journey_stats`);
-  const speciesCount = await pool.query(`SELECT count(*) as cnt FROM player_captured_species`);
-  const totalEvents = await pool.query(`SELECT count(*) as cnt FROM game_events WHERE server_id = $1`, [serverId]);
-
-  console.log(`  Journey entries: ${entryCount.rows[0].cnt}`);
-  console.log(`  Player stats: ${statsCount.rows[0].cnt}`);
-  console.log(`  Captured species: ${speciesCount.rows[0].cnt}`);
+  console.log(`  Journey entries: ${entries.rows[0].cnt}`);
+  console.log(`  Player stats: ${stats.rows[0].cnt}`);
+  console.log(`  Captured species: ${species.rows[0].cnt}`);
   console.log(`  Total game events: ${totalEvents.rows[0].cnt}`);
 
   console.log("\nIntegrity:");
-
-  const duplicateQuery = await pool.query(
-    `SELECT source, count(*) as cnt
-     FROM game_events
-     WHERE server_id = $1
-     GROUP BY source
-     HAVING count(*) > 1`,
-    [serverId],
+  const backfilled = await pool.query(
+    "SELECT count(*)::int as cnt FROM game_events WHERE backfilled = true",
   );
-  const totalSources = duplicateQuery.rows.length;
-
-  const unresolvedRareResult = await pool.query(
-    `SELECT count(*) as cnt
-     FROM game_events
+  const unresolved = await pool.query(
+    `SELECT count(*)::int as cnt FROM game_events
      WHERE event_type = 'pokemon.rare.captured'
-       AND minecraft_uuid IS NULL
-       AND server_id = $1`,
+       AND minecraft_uuid IS NULL AND server_id = $1`,
     [serverId],
   );
-  const unresolvedRare = Number(unresolvedRareResult.rows[0]?.cnt ?? 0);
-
-  const backfilledResult = await pool.query(
-    `SELECT count(*) as cnt FROM game_events WHERE backfilled = true`,
-  );
-  const backfilled = Number(backfilledResult.rows[0]?.cnt ?? 0);
-
-  const failedResult = await pool.query(
-    `SELECT count(*) as cnt FROM gateway_events WHERE status = 'failed' AND server_id = $1`,
+  const failed = await pool.query(
+    "SELECT count(*)::int as cnt FROM gateway_events WHERE status = 'failed' AND server_id = $1",
     [serverId],
   );
-  const failed = Number(failedResult.rows[0]?.cnt ?? 0);
 
-  console.log(`  Duplicate sources: ${totalSources}`);
-  console.log(`  Unresolved rare captures: ${unresolvedRare}`);
-  console.log(`  Backfilled events: ${backfilled}`);
-  console.log(`  Failed gateway events: ${failed}`);
+  console.log(`  Backfilled events: ${backfilled.rows[0].cnt}`);
+  console.log(`  Unresolved rare captures: ${unresolved.rows[0].cnt}`);
+  console.log(`  Failed gateway events: ${failed.rows[0].cnt}`);
 
   console.log("\nDone.");
 }
