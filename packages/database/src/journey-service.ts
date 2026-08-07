@@ -3,6 +3,7 @@ import {
   insertGameEvent,
   findGameEventById,
   findGameEventBySource,
+  findRecentGameEventsByMinecraftUuid,
   insertJourneyEntry,
   getOrCreateJourneyStats,
   upsertCapturedSpecies,
@@ -179,10 +180,12 @@ export async function processCaptureEvent(
     count++;
   }
 
-  await deps.db
-    .update(playerJourneyStats)
-    .set({
-      totalCaptures: sql`${playerJourneyStats.totalCaptures} + 1`,
+  const isDupedByBbsa = species ? await isCapturedByBbsa(deps, minecraftUuid, species, occurredAt) : false;
+  if (!isDupedByBbsa) {
+    await deps.db
+      .update(playerJourneyStats)
+      .set({
+        totalCaptures: sql`${playerJourneyStats.totalCaptures} + 1`,
       uniqueSpeciesCaptured: uniqueCount,
       shinyCaptures: shiny
         ? sql`${playerJourneyStats.shinyCaptures} + 1`
@@ -200,6 +203,7 @@ export async function processCaptureEvent(
       updatedAt: new Date(),
     })
     .where(eq(playerJourneyStats.minecraftUuid, minecraftUuid));
+  }
 
   return count;
 }
@@ -244,17 +248,24 @@ export async function processRareCapturedEvent(
     occurredAt,
   });
 
+  const isDuped = await isCapturedByGateway(deps, minecraftUuid, species, occurredAt);
+  if (isDuped) return 1;
+
   await deps.db
     .update(playerJourneyStats)
     .set({
       rareCaptures: sql`${playerJourneyStats.rareCaptures} + 1`,
       rareCaptureCount: sql`${playerJourneyStats.rareCaptureCount} + 1`,
+      totalCaptures: sql`${playerJourneyStats.totalCaptures} + 1`,
       shinyCaptures: shiny
         ? sql`${playerJourneyStats.shinyCaptures} + 1`
         : playerJourneyStats.shinyCaptures,
       legendaryCaptures: legendary
         ? sql`${playerJourneyStats.legendaryCaptures} + 1`
         : playerJourneyStats.legendaryCaptures,
+      lastCapturedSpecies: species ?? playerJourneyStats.lastCapturedSpecies,
+      lastShinySpecies: shiny ? species ?? playerJourneyStats.lastShinySpecies : playerJourneyStats.lastShinySpecies,
+      lastLegendarySpecies: legendary ? species ?? playerJourneyStats.lastLegendarySpecies : playerJourneyStats.lastLegendarySpecies,
       lastSeenAt: new Date(),
       updatedAt: new Date(),
     })
@@ -382,6 +393,64 @@ export async function processProfileSnapshot(
     .where(eq(playerJourneyStats.minecraftUuid, minecraftUuid));
 
   return count;
+}
+
+async function isCapturedByGateway(
+  deps: JourneyServiceDeps,
+  minecraftUuid: string,
+  species: string | undefined,
+  occurredAt: Date,
+): Promise<boolean> {
+  if (!species) return false;
+  const window = 10_000;
+  const cutoff = new Date(occurredAt.getTime() - window);
+  const upper = new Date(occurredAt.getTime() + window);
+
+  const { gameEvents } = await import("./schema.js");
+  const { eq, and, sql: sql2, count } = await import("drizzle-orm");
+  const rows = await deps.db
+    .select({ cnt: count() })
+    .from(gameEvents)
+    .where(
+      and(
+        eq(gameEvents.minecraftUuid, minecraftUuid),
+        eq(gameEvents.eventType, "pokemon.capture.completed"),
+        sql`${gameEvents.payload}->>'species' = ${species}`,
+        sql`${gameEvents.occurredAt} >= ${cutoff}`,
+        sql`${gameEvents.occurredAt} <= ${upper}`,
+      ),
+    );
+
+  return (rows[0]?.cnt ?? 0) > 0;
+}
+
+async function isCapturedByBbsa(
+  deps: JourneyServiceDeps,
+  minecraftUuid: string,
+  species: string | undefined,
+  occurredAt: Date,
+): Promise<boolean> {
+  if (!species) return false;
+  const window = 10_000;
+  const cutoff = new Date(occurredAt.getTime() - window);
+  const upper = new Date(occurredAt.getTime() + window);
+
+  const { gameEvents } = await import("./schema.js");
+  const { eq, and, sql: sql2, count } = await import("drizzle-orm");
+  const rows = await deps.db
+    .select({ cnt: count() })
+    .from(gameEvents)
+    .where(
+      and(
+        eq(gameEvents.minecraftUuid, minecraftUuid),
+        eq(gameEvents.eventType, "pokemon.rare.captured"),
+        sql`${gameEvents.payload}->>'species' = ${species}`,
+        sql`${gameEvents.occurredAt} >= ${cutoff}`,
+        sql`${gameEvents.occurredAt} <= ${upper}`,
+      ),
+    );
+
+  return (rows[0]?.cnt ?? 0) > 0;
 }
 
 function stringField(obj: Record<string, unknown>, key: string): string | undefined {

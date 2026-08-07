@@ -29,6 +29,7 @@
     "discord:clear": "tsx apps/bot-api/src/discord/register.ts --clear",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx packages/database/src/migrate.ts",
+    "journey:doctor": "tsx scripts/journey-doctor.ts",
     "db:check": "drizzle-kit check",
     "db:studio": "drizzle-kit studio",
     "data:import-cobblemon": "tsx packages/cobblemon-data/src/cli.ts",

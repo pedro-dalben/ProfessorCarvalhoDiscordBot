@@ -9,7 +9,13 @@ import {
   applyLifecycleTransition,
   insertLifecycleHistory,
   touchSourceLastSeen,
+  storeGameEvent,
+  processCaptureEvent,
+  processRareCapturedEvent,
 } from "@bigbangcraft/database";
+import { findActiveIdentity } from "@bigbangcraft/database";
+import { identityLinks } from "@bigbangcraft/database";
+import { eq, and } from "drizzle-orm";
 import type { QueueSet } from "@bigbangcraft/queue";
 import { JOB_NAMES } from "@bigbangcraft/queue";
 import {
@@ -331,6 +337,10 @@ export function registerBbsaRoutes(
         return reply.status(204).send();
       }
 
+      void processBbsaLifecycleForJourney(db, event, toStatus, updated, config).catch((err) => {
+        logger.error({ err, spawnAlertId: event.spawnAlertId }, "Falha ao criar GameEvent de BBSA.");
+      });
+
       if (updated.discordChannelId && updated.discordMessageId) {
         await queues.bbsaEdits.add(JOB_NAMES.EDIT_BBSA_SPAWN_ALERT, {
           spawnEventId: updated.id,
@@ -375,4 +385,90 @@ function sanitizeBbsaNormalizedEvent(
     delete copy.coordinates;
   }
   return copy;
+}
+
+async function processBbsaLifecycleForJourney(
+  db: DatabaseClient,
+  event: SpawnLifecycleEvent & { species?: string; displayName?: string },
+  toStatus: string,
+  updated: Awaited<ReturnType<typeof applyLifecycleTransition>>,
+  config: AppConfig,
+): Promise<void> {
+  if (!updated) return;
+
+  let minecraftUuid: string | undefined;
+  let linkId: string | undefined;
+
+  if (event.playerName) {
+    const link = await getOrResolveIdentity(db, event.playerName);
+    if (link) {
+      minecraftUuid = link.minecraftUuid;
+      linkId = link.linkId;
+    }
+  }
+
+  const eventId = `bbsa:${event.spawnAlertId}:${toStatus}`;
+
+  const species = event.species ?? event.displayName ?? updated.species ?? undefined;
+  const payload: Record<string, unknown> = {
+    species,
+    form: event.form ?? updated.form ?? null,
+    dexNumber: event.dexNumber ?? updated.dexNumber,
+    level: event.level ?? updated.level,
+    shiny: event.shiny ?? updated.shiny ?? false,
+    legendary: event.legendary ?? updated.legendary ?? false,
+    mythical: event.mythical ?? updated.mythical ?? false,
+    ultraBeast: event.ultraBeast ?? updated.ultraBeast ?? false,
+    paradox: event.paradox ?? updated.paradox ?? false,
+    rarity: event.rarity ?? updated.rarity ?? null,
+    spawnAlertId: event.spawnAlertId,
+    playerName: event.playerName ?? null,
+    occurredAt: new Date().toISOString(),
+  };
+
+  const gameEventType = `pokemon.rare.${toStatus.toLowerCase()}`;
+
+  const result = await storeGameEvent({ db }, {
+    eventId,
+    eventType: gameEventType,
+    schemaVersion: "1.0",
+    serverId: config.BIGMONCRAFT_SERVER_ID,
+    source: "bigbang-spawn-alerts",
+    sourceEventId: `${event.spawnAlertId}:${toStatus}`,
+    minecraftUuid,
+    identityLinkId: linkId,
+    occurredAt: new Date(),
+    payload,
+  });
+
+  if (!result.dbId || result.duplicate) return;
+  if (!minecraftUuid) return;
+
+  if (toStatus === "CAPTURED") {
+    await processRareCapturedEvent({ db }, result.dbId, minecraftUuid, linkId, payload);
+  }
+}
+
+async function getOrResolveIdentity(
+  db: DatabaseClient,
+  playerName: string,
+): Promise<{ minecraftUuid: string; linkId: string } | null> {
+  const { identityLinks } = await import("@bigbangcraft/database");
+  const { eq, and, desc } = await import("drizzle-orm");
+  const rows = await db
+    .select({ minecraftUuid: identityLinks.minecraftUuid, linkId: identityLinks.id, linkedAt: identityLinks.linkedAt })
+    .from(identityLinks)
+    .where(
+      and(
+        eq(identityLinks.minecraftName, playerName),
+        eq(identityLinks.status, "active"),
+      ),
+    )
+    .orderBy(desc(identityLinks.linkedAt))
+    .limit(1);
+
+  if (rows[0]) {
+    return { minecraftUuid: rows[0].minecraftUuid, linkId: rows[0].linkId };
+  }
+  return null;
 }
