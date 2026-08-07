@@ -35,15 +35,15 @@ export interface GameEventInput {
 export async function storeGameEvent(
   deps: JourneyServiceDeps,
   input: GameEventInput,
-): Promise<{ eventId: string; duplicate: boolean; dbId: string | null }> {
+): Promise<{ eventId: string; duplicate: boolean; dbId: string | null; identityLinkId: string | null }> {
   const existing = await findGameEventById(deps.db, input.eventId);
   if (existing) {
-    return { eventId: input.eventId, duplicate: true, dbId: existing.id };
+    return { eventId: input.eventId, duplicate: true, dbId: existing.id, identityLinkId: existing.identityLinkId };
   }
   if (input.sourceEventId) {
     const bySource = await findGameEventBySource(deps.db, input.source, input.sourceEventId);
     if (bySource) {
-      return { eventId: input.eventId, duplicate: true, dbId: bySource.id };
+      return { eventId: input.eventId, duplicate: true, dbId: bySource.id, identityLinkId: bySource.identityLinkId };
     }
   }
 
@@ -69,7 +69,7 @@ export async function storeGameEvent(
     payload: input.payload,
   });
 
-  return { eventId: input.eventId, duplicate: row === null, dbId: row?.id ?? null };
+  return { eventId: input.eventId, duplicate: row === null, dbId: row?.id ?? null, identityLinkId: linkId ?? null };
 }
 
 export async function processCaptureEvent(

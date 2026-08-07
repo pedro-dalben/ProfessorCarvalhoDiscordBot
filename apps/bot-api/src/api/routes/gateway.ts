@@ -12,6 +12,8 @@ import {
   storeGameEvent,
   processSessionStarted,
   processProfileSnapshot,
+  processCaptureEvent,
+  processEvolutionEvent,
 } from "@bigbangcraft/database";
 import { gatewayEvents, identityLinkAudit, playerProfileSnapshots } from "@bigbangcraft/database";
 import { eq } from "drizzle-orm";
@@ -234,12 +236,19 @@ async function processGatewayEventForJourney(
   deps: GatewayDeps,
   event: { eventId: string; eventType: string; schemaVersion: string; serverId: string; occurredAt: string; payload: unknown },
 ): Promise<void> {
-  const sessionTypes = ["player.session.started", "player.session.ended"];
-  if (!sessionTypes.includes(event.eventType)) return;
+  const journeyTypes = [
+    "player.session.started",
+    "player.session.ended",
+    "pokemon.capture.completed",
+    "pokemon.evolution.completed",
+  ];
+  if (!journeyTypes.includes(event.eventType)) return;
 
   const p = isRecord(event.payload) ? event.payload : {};
   const player = isRecord(p.player) ? p.player : {};
-  const mcUuid = typeof player.minecraftUuid === "string" ? player.minecraftUuid : undefined;
+  const mcUuid =
+    (typeof p.minecraftUuid === "string" ? p.minecraftUuid : undefined) ??
+    (typeof player.minecraftUuid === "string" ? player.minecraftUuid : undefined);
 
   if (!mcUuid || !isUuid(mcUuid)) return;
 
@@ -255,10 +264,21 @@ async function processGatewayEventForJourney(
     payload: p,
   });
 
-  if (result.dbId && !result.duplicate) {
-    if (event.eventType === "player.session.started") {
-      await processSessionStarted({ db: deps.db }, mcUuid, undefined);
-    }
+  if (!result.dbId || result.duplicate) return;
+  const linkId = result.identityLinkId ?? undefined;
+
+  switch (event.eventType) {
+    case "player.session.started":
+      await processSessionStarted({ db: deps.db }, mcUuid, linkId);
+      break;
+    case "pokemon.capture.completed":
+      await processCaptureEvent({ db: deps.db }, result.dbId, mcUuid, linkId, deps.config.BIGMONCRAFT_SERVER_ID, p);
+      break;
+    case "pokemon.evolution.completed":
+      await processEvolutionEvent({ db: deps.db }, result.dbId, mcUuid, linkId, p);
+      break;
+    default:
+      break;
   }
 }
 
