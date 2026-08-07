@@ -229,7 +229,35 @@ async function handleEvents(request: FastifyRequest, reply: FastifyReply, deps: 
   void processGatewayEventForJourney(deps, event).catch((err) => {
     deps.logger.error({ err, eventId: event.eventId }, "Falha ao criar GameEvent da jornada.");
   });
+  void processHeartbeatForGatewayServer(deps, event, auth.serverId).catch((err) => {
+    deps.logger.error({ err, eventId: event.eventId }, "Falha ao registrar gateway server.");
+  });
   return reply.send({ accepted: true, eventId: event.eventId, duplicate: false });
+}
+
+async function processHeartbeatForGatewayServer(
+  deps: GatewayDeps,
+  event: { eventType: string; payload: unknown },
+  serverId: string,
+): Promise<void> {
+  if (event.eventType !== "gateway.heartbeat") return;
+  const p = isRecord(event.payload) ? event.payload : {};
+  await upsertGatewayServer(deps.db, {
+    serverId,
+    displayName:
+      serverId === deps.config.BIGMONCRAFT_SERVER_ID
+        ? deps.config.BIGMONCRAFT_SERVER_NAME
+        : serverId,
+    protocolVersion:
+      (typeof p.protocolVersion === "string" ? p.protocolVersion : undefined) ??
+      deps.config.GATEWAY_PROTOCOL_VERSION,
+    statusPayload: p,
+    gatewayVersion: stringValue(p.gatewayVersion),
+    minecraftVersion: stringValue(p.minecraftVersion),
+    fabricVersion: stringValue(p.fabricLoaderVersion),
+    cobblemonVersion: stringValue(p.cobblemonVersion),
+    bigbangessentialsVersion: stringValue(p.bigBangEssentialsVersion),
+  });
 }
 
 async function processGatewayEventForJourney(
