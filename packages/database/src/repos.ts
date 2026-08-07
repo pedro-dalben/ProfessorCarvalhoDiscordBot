@@ -1,6 +1,6 @@
 import { eq, sql, and } from "drizzle-orm";
 import type { DatabaseClient } from "./client.js";
-import { integrationEvents, integrationSources, spawnEvents } from "./schema.js";
+import { integrationEvents, integrationSources, spawnEvents, spawnLifecycleHistory } from "./schema.js";
 
 export async function findSourceByKey(
   db: DatabaseClient,
@@ -192,6 +192,7 @@ export async function createSpawnEvent(
   data: {
     integrationEventId?: string;
     serverId: string;
+    externalSpawnAlertId?: string;
     species?: string;
     form?: string;
     dexNumber?: number;
@@ -207,6 +208,16 @@ export async function createSpawnEvent(
     dimension?: string;
     coordinateRegion?: string;
     occurredAt?: Date;
+    lifecycleStatus?: string;
+    spawnOrigin?: string;
+    worldKey?: string;
+    worldDisplayName?: string;
+    dimensionKey?: string;
+    locationVisibility?: string;
+    alertReasons?: unknown;
+    matchedRuleIds?: unknown;
+    involvedPlayerName?: string;
+    spawnedAt?: Date;
   },
 ) {
   const result = await db
@@ -214,6 +225,7 @@ export async function createSpawnEvent(
     .values({
       integrationEventId: data.integrationEventId,
       serverId: data.serverId,
+      externalSpawnAlertId: data.externalSpawnAlertId,
       species: data.species,
       form: data.form,
       dexNumber: data.dexNumber,
@@ -229,6 +241,18 @@ export async function createSpawnEvent(
       dimension: data.dimension,
       coordinateRegion: data.coordinateRegion,
       occurredAt: data.occurredAt ?? new Date(),
+      lifecycleStatus: data.lifecycleStatus ?? "SPAWNED",
+      lifecycleRevision: 1,
+      spawnOrigin: data.spawnOrigin,
+      worldKey: data.worldKey,
+      worldDisplayName: data.worldDisplayName,
+      dimensionKey: data.dimensionKey,
+      locationVisibility: data.locationVisibility,
+      alertReasons: data.alertReasons,
+      matchedRuleIds: data.matchedRuleIds,
+      involvedPlayerName: data.involvedPlayerName,
+      spawnedAt: data.spawnedAt,
+      lastLifecycleAt: new Date(),
     })
     .onConflictDoNothing({ target: spawnEvents.integrationEventId })
     .returning();
@@ -301,4 +325,129 @@ export async function cleanupExpiredEvents(
     .where(sql`${integrationEvents.receivedAt} < ${cutoff}`)
     .returning({ id: integrationEvents.id });
   return result.length;
+}
+
+export async function findSpawnByExternalId(
+  db: DatabaseClient,
+  serverId: string,
+  externalSpawnAlertId: string,
+): Promise<typeof spawnEvents.$inferSelect | null> {
+  const rows = await db
+    .select()
+    .from(spawnEvents)
+    .where(
+      and(
+        eq(spawnEvents.serverId, serverId),
+        eq(spawnEvents.externalSpawnAlertId, externalSpawnAlertId),
+      ),
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function applyLifecycleTransition(
+  db: DatabaseClient,
+  spawnEventId: string,
+  newStatus: string,
+  newRevision: number,
+  data: {
+    involvedPlayerName?: string;
+    resolvedAt?: Date;
+  },
+): Promise<typeof spawnEvents.$inferSelect | null> {
+  const updates: Record<string, unknown> = {
+    lifecycleStatus: newStatus,
+    lifecycleRevision: newRevision,
+    lastLifecycleAt: new Date(),
+  };
+  if (data.involvedPlayerName) {
+    updates.involvedPlayerName = data.involvedPlayerName;
+  }
+  if (data.resolvedAt) {
+    updates.resolvedAt = data.resolvedAt;
+  }
+  const rows = await db
+    .update(spawnEvents)
+    .set(updates)
+    .where(
+      and(
+        eq(spawnEvents.id, spawnEventId),
+        sql`${spawnEvents.lifecycleRevision} = ${newRevision - 1}`,
+      ),
+    )
+    .returning();
+  return rows[0] ?? null;
+}
+
+export async function insertLifecycleHistory(
+  db: DatabaseClient,
+  data: {
+    spawnEventId: string;
+    externalSpawnAlertId: string;
+    status: string;
+    revision: number;
+    occurredAt?: Date;
+    playerName?: string;
+    payloadHash?: string;
+    normalizedPayload?: unknown;
+    applied: boolean;
+    rejectionReason?: string;
+  },
+): Promise<typeof spawnLifecycleHistory.$inferSelect | null> {
+  const rows = await db
+    .insert(spawnLifecycleHistory)
+    .values({
+      spawnEventId: data.spawnEventId,
+      externalSpawnAlertId: data.externalSpawnAlertId,
+      status: data.status,
+      revision: data.revision,
+      occurredAt: data.occurredAt,
+      playerName: data.playerName,
+      payloadHash: data.payloadHash,
+      normalizedPayload: data.normalizedPayload,
+      applied: data.applied,
+      rejectionReason: data.rejectionReason,
+      receivedAt: new Date(),
+    })
+    .returning();
+  return rows[0] ?? null;
+}
+
+export async function updateSpawnDiscordIds(
+  db: DatabaseClient,
+  spawnEventId: string,
+  data: {
+    discordChannelId: string;
+    discordMessageId: string;
+  },
+): Promise<void> {
+  await db
+    .update(spawnEvents)
+    .set({
+      discordChannelId: data.discordChannelId,
+      discordMessageId: data.discordMessageId,
+      deliveredAt: new Date(),
+      deliveryStatus: "delivered",
+      lastDeliveryError: null,
+    })
+    .where(eq(spawnEvents.id, spawnEventId));
+}
+
+export async function claimSpawnEdit(
+  db: DatabaseClient,
+  spawnEventId: string,
+  expectedRevision: number,
+): Promise<typeof spawnEvents.$inferSelect | null> {
+  const rows = await db
+    .update(spawnEvents)
+    .set({ deliveryAttempts: sql`${spawnEvents.deliveryAttempts} + 1` })
+    .where(
+      and(
+        eq(spawnEvents.id, spawnEventId),
+        sql`${spawnEvents.lifecycleRevision} = ${expectedRevision}`,
+        sql`${spawnEvents.deliveryStatus} = 'delivered'`,
+      ),
+    )
+    .returning();
+  return rows[0] ?? null;
 }

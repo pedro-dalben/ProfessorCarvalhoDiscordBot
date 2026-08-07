@@ -8,3 +8,4 @@ export * from "./commands/spawn.js";
 export * from "./commands/ajuda.js";
 export * from "./commands/status.js";
 export * from "./embeds/alert.js";
+export * from "./embeds/bbsa-alert.js";

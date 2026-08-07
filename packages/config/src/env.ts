@@ -10,6 +10,9 @@ const positiveInt = z.coerce.number().int().positive();
 export const CSA_MODES = ["relay", "direct", "disabled"] as const;
 export type CsaIntegrationMode = (typeof CSA_MODES)[number];
 
+export const BBSA_MODES = ["relay", "disabled"] as const;
+export type BbsaIntegrationMode = (typeof BBSA_MODES)[number];
+
 export const REGISTRATION_MODES = ["guild", "global"] as const;
 export type CommandRegistrationMode = (typeof REGISTRATION_MODES)[number];
 
@@ -89,6 +92,21 @@ export const envSchema = z.object({
   CSA_STORE_SANITIZED_PAYLOAD_DAYS: positiveInt.default(14),
   CSA_EXPECTED_SOURCE_VERSION: z.string().optional(),
 
+  BBSA_INTEGRATION_MODE: z.enum(BBSA_MODES).default("disabled"),
+  BBSA_SOURCE_TOKEN: z.string().min(32).optional(),
+  BBSA_ALLOWED_CIDRS: z
+    .string()
+    .optional()
+    .default(() => ""),
+  BBSA_EXPECTED_VERSION: z.string().default("1.14.0"),
+  BBSA_BODY_LIMIT_BYTES: positiveInt.default(65536),
+  BBSA_RATE_LIMIT_MAX: positiveInt.default(120),
+  BBSA_RATE_LIMIT_WINDOW_SECONDS: positiveInt.default(60),
+  BBSA_RECREATE_DELETED_MESSAGE: boolFromString.default(() => true),
+  BBSA_SHOW_ORIGIN: boolFromString.default(() => false),
+  BBSA_SHOW_ALERT_REASONS: boolFromString.default(() => true),
+  BBSA_STORE_HISTORY_DAYS: positiveInt.default(30),
+
   SPAWN_COORDINATE_POLICY: z.enum(["hidden", "region", "exact_admin_only"]).default("hidden"),
   SPAWN_REGION_GRID_SIZE: positiveInt.default(500),
   SPAWN_SHOW_NEAREST_PLAYER: boolFromString.default(() => false),
@@ -143,6 +161,7 @@ export class ConfigValidationError extends Error {
 export function describeConditionalRequirements(): string[] {
   return [
     "CSA_SOURCE_TOKEN é obrigatória quando CSA_INTEGRATION_MODE=relay",
+    "BBSA_SOURCE_TOKEN é obrigatória quando BBSA_INTEGRATION_MODE=relay",
     "DISCORD_DEV_GUILD_ID é obrigatória quando DISCORD_COMMAND_REGISTRATION_MODE=guild",
     "DISCORD_PRIVATE_SPAWN_ALERT_CHANNEL_ID é obrigatória quando SPAWN_COORDINATE_POLICY=exact_admin_only",
     "METRICS_BEARER_TOKEN é obrigatória quando METRICS_PUBLIC_ACCESS=true",
@@ -172,6 +191,9 @@ function applyConditionalRules(config: AppConfig): void {
   const missing: string[] = [];
   if (config.CSA_INTEGRATION_MODE === "relay" && !config.CSA_SOURCE_TOKEN) {
     missing.push("CSA_SOURCE_TOKEN (obrigatória com CSA_INTEGRATION_MODE=relay)");
+  }
+  if (config.BBSA_INTEGRATION_MODE === "relay" && !config.BBSA_SOURCE_TOKEN) {
+    missing.push("BBSA_SOURCE_TOKEN (obrigatória com BBSA_INTEGRATION_MODE=relay)");
   }
   if (config.DISCORD_COMMAND_REGISTRATION_MODE === "guild" && !config.DISCORD_DEV_GUILD_ID) {
     missing.push("DISCORD_DEV_GUILD_ID (obrigatória com DISCORD_COMMAND_REGISTRATION_MODE=guild)");
@@ -219,6 +241,7 @@ export const REDACTED_PATHS = [
   "DATABASE_URL",
   "REDIS_URL",
   "CSA_SOURCE_TOKEN",
+  "BBSA_SOURCE_TOKEN",
   "ADMIN_API_TOKEN",
   "METRICS_BEARER_TOKEN",
   "DISCORD_WEBHOOK_URL",

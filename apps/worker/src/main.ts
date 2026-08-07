@@ -14,12 +14,21 @@ import {
   QUEUE_NAMES,
   type ProcessCsaAlertPayload,
   type DeliverDiscordSpawnAlertPayload,
+  type ProcessBbsaAlertPayload,
+  type DeliverBbsaSpawnAlertPayload,
+  type EditBbsaSpawnAlertPayload,
   type CleanupExpiredEventsPayload,
 } from "@bigbangcraft/queue";
 import { Worker, type Job } from "bullmq";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v10";
 import { processCsaJob, deliverDiscordJob, type DiscordSender } from "./handlers.js";
+import {
+  processBbsaJob,
+  deliverBbsaJob,
+  editBbsaJob,
+  type DiscordEditor,
+} from "./bbsa-handlers.js";
 
 function createDiscordSender(token: string): DiscordSender {
   const rest = new REST({ version: "10" }).setToken(token);
@@ -29,6 +38,23 @@ function createDiscordSender(token: string): DiscordSender {
         body,
       })) as { id: string };
       return { id: result.id };
+    },
+  };
+}
+
+function createDiscordEditor(token: string): DiscordEditor {
+  const rest = new REST({ version: "10" }).setToken(token);
+  return {
+    async send(channelId, body) {
+      const result = (await rest.post(Routes.channelMessages(channelId), {
+        body,
+      })) as { id: string };
+      return { id: result.id };
+    },
+    async edit(channelId, messageId, body) {
+      await rest.patch(Routes.channelMessage(channelId, messageId), {
+        body,
+      });
     },
   };
 }
@@ -58,6 +84,7 @@ function main(): void {
   const queues = createQueues(redisClient, config.REDIS_KEY_PREFIX);
 
   const discordSender = config.DISCORD_TOKEN ? createDiscordSender(config.DISCORD_TOKEN) : null;
+  const discordEditor = config.DISCORD_TOKEN ? createDiscordEditor(config.DISCORD_TOKEN) : null;
 
   const spawnWorker = new Worker<ProcessCsaAlertPayload>(
     QUEUE_NAMES.SPAWN_ALERTS,
@@ -143,6 +170,74 @@ function main(): void {
     },
   );
 
+  const bbsaAlertWorker = new Worker<ProcessBbsaAlertPayload>(
+    QUEUE_NAMES.BBSA_ALERTS,
+    async (job: Job<ProcessBbsaAlertPayload>) => {
+      const { eventId, sourceId, sourceVersion, serverId } = job.data;
+      logger.info({ eventId, sourceId }, "Processando alerta BBSA.");
+
+      const result = await processBbsaJob(db, config, { eventId, sourceId, sourceVersion, serverId }, async (deliveryJob) => {
+        await queues.bbsaDelivery.add(JOB_NAMES.DELIVER_BBSA_SPAWN_ALERT, deliveryJob);
+      });
+
+      logger.info({ eventId, spawnEventId: result.spawnEventId, skipped: result.skipped }, "Alerta BBSA processado.");
+    },
+    {
+      connection: redisClient,
+      prefix: config.REDIS_KEY_PREFIX,
+      concurrency: 4,
+      removeOnComplete: { age: 86400 },
+      removeOnFail: { age: 7 * 86400 },
+    },
+  );
+
+  bbsaAlertWorker.on("failed", (job: Job<ProcessBbsaAlertPayload> | undefined, error: Error) => {
+    if (job) {
+      logger.error({ eventId: job.data.eventId, err: error }, "Job process-bbsa-alert falhou.");
+      if ((job.attemptsMade) >= (job.opts.attempts ?? 3)) {
+        void markEventFailed(db, job.data.eventId, "BBSA_PROCESSING_FAILED");
+      }
+    }
+  });
+
+  const bbsaDeliveryWorker = new Worker<DeliverBbsaSpawnAlertPayload>(
+    QUEUE_NAMES.BBSA_DELIVERY,
+    async (job: Job<DeliverBbsaSpawnAlertPayload>) => {
+      if (!discordSender) {
+        logger.warn("DISCORD_TOKEN não configurado. Entrega BBSA ignorada.");
+        return;
+      }
+      const result = await deliverBbsaJob(db, discordSender, metrics, config, job.data);
+      logger.info({ spawnEventId: job.data.spawnEventId, delivered: result.delivered }, "Entrega BBSA concluída.");
+    },
+    {
+      connection: redisClient,
+      prefix: config.REDIS_KEY_PREFIX,
+      concurrency: 2,
+      removeOnComplete: { age: 86400 },
+      removeOnFail: { age: 7 * 86400 },
+    },
+  );
+
+  const bbsaEditWorker = new Worker<EditBbsaSpawnAlertPayload>(
+    QUEUE_NAMES.BBSA_EDITS,
+    async (job: Job<EditBbsaSpawnAlertPayload>) => {
+      if (!discordEditor) {
+        logger.warn("DISCORD_TOKEN não configurado. Edição BBSA ignorada.");
+        return;
+      }
+      await editBbsaJob(db, discordEditor, metrics, config, job.data);
+      logger.info({ spawnEventId: job.data.spawnEventId, revision: job.data.expectedRevision }, "Edição BBSA concluída.");
+    },
+    {
+      connection: redisClient,
+      prefix: config.REDIS_KEY_PREFIX,
+      concurrency: 2,
+      removeOnComplete: { age: 86400 },
+      removeOnFail: { age: 7 * 86400 },
+    },
+  );
+
   const heartbeatInstanceId = randomUUID();
   setInterval(() => {
     void (async () => {
@@ -163,11 +258,17 @@ function main(): void {
   const shutdownManager = new ShutdownManager(logger, config.SHUTDOWN_TIMEOUT_MS);
   shutdownManager.register("spawnWorker", () => spawnWorker.close());
   shutdownManager.register("deliveryWorker", () => deliveryWorker.close());
+  shutdownManager.register("bbsaAlertWorker", () => bbsaAlertWorker.close());
+  shutdownManager.register("bbsaDeliveryWorker", () => bbsaDeliveryWorker.close());
+  shutdownManager.register("bbsaEditWorker", () => bbsaEditWorker.close());
   shutdownManager.register("maintenanceWorker", () => maintenanceWorker.close());
   shutdownManager.register("queues", async () => {
     await Promise.all([
       queues.spawnAlerts.close(),
       queues.spawnDelivery.close(),
+      queues.bbsaAlerts.close(),
+      queues.bbsaDelivery.close(),
+      queues.bbsaEdits.close(),
       queues.maintenance.close(),
       queues.usageAggregation.close(),
     ]);

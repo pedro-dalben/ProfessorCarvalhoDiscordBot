@@ -19,6 +19,9 @@ export function createRedisClient(config: QueueConnectionConfig): Redis {
 export interface QueueSet {
   spawnAlerts: Queue;
   spawnDelivery: Queue;
+  bbsaAlerts: Queue;
+  bbsaDelivery: Queue;
+  bbsaEdits: Queue;
   maintenance: Queue;
   usageAggregation: Queue;
 }
@@ -37,6 +40,21 @@ export function createQueues(redisClient: Redis, keyPrefix: string): QueueSet {
       connection: redisClient,
       prefix,
       defaultJobOptions: { ...defaultJobOptions, attempts: 5 },
+    }),
+    bbsaAlerts: new Queue(QUEUE_NAMES.BBSA_ALERTS, {
+      connection: redisClient,
+      prefix,
+      defaultJobOptions: { ...defaultJobOptions, attempts: 3 },
+    }),
+    bbsaDelivery: new Queue(QUEUE_NAMES.BBSA_DELIVERY, {
+      connection: redisClient,
+      prefix,
+      defaultJobOptions: { ...defaultJobOptions, attempts: 5 },
+    }),
+    bbsaEdits: new Queue(QUEUE_NAMES.BBSA_EDITS, {
+      connection: redisClient,
+      prefix,
+      defaultJobOptions: { ...defaultJobOptions, attempts: 3 },
     }),
     maintenance: new Queue(QUEUE_NAMES.MAINTENANCE, {
       connection: redisClient,

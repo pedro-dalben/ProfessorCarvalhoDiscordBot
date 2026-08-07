@@ -6,6 +6,7 @@ import type { AppLogger, ProfessorMetrics } from "@bigbangcraft/observability";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerMetricsRoutes } from "./routes/metrics.js";
 import { registerCsaRoutes } from "./routes/csa.js";
+import { registerBbsaRoutes } from "./routes/bbsa.js";
 import { registerGatewayRoutes } from "./routes/gateway.js";
 import type { SpawnDedupService } from "@bigbangcraft/csa-integration";
 import type { DatabaseClient } from "@bigbangcraft/database";
@@ -33,7 +34,7 @@ export async function createServer(
   const app = Fastify({
     logger: false,
     trustProxy: config.TRUSTED_PROXY_ADDRESSES ?? false,
-    bodyLimit: Math.max(config.CSA_BODY_LIMIT_BYTES, config.GATEWAY_BODY_LIMIT_BYTES),
+    bodyLimit: Math.max(config.CSA_BODY_LIMIT_BYTES, config.GATEWAY_BODY_LIMIT_BYTES, config.BBSA_BODY_LIMIT_BYTES),
   });
 
   await app.register(fastifyHelmet, {
@@ -51,6 +52,7 @@ export async function createServer(
   registerHealthRoutes(app, { db, queues, config });
   registerMetricsRoutes(app, { metrics, config });
   registerCsaRoutes(app, { config, logger, db, queues, dedupService, metrics });
+  registerBbsaRoutes(app, { config, logger, db, queues, metrics });
   registerGatewayRoutes(app, { config, logger, db, redis: redisClient });
 
   app.setErrorHandler((error, _request, reply) => {

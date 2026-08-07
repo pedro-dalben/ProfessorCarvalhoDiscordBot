@@ -77,6 +77,7 @@ export const spawnEvents = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     integrationEventId: uuid("integration_event_id").references(() => integrationEvents.id),
     serverId: text("server_id").notNull(),
+    externalSpawnAlertId: text("external_spawn_alert_id"),
     species: text("species"),
     form: text("form"),
     dexNumber: integer("dex_number"),
@@ -92,6 +93,20 @@ export const spawnEvents = pgTable(
     dimension: text("dimension"),
     coordinateRegion: text("coordinate_region"),
     occurredAt: timestamp("occurred_at", { withTimezone: true }),
+    lifecycleStatus: text("lifecycle_status").default("SPAWNED"),
+    lifecycleRevision: integer("lifecycle_revision").default(1),
+    spawnOrigin: text("spawn_origin"),
+    worldKey: text("world_key"),
+    worldDisplayName: text("world_display_name"),
+    dimensionKey: text("dimension_key"),
+    locationVisibility: text("location_visibility"),
+    alertReasons: jsonb("alert_reasons"),
+    matchedRuleIds: jsonb("matched_rule_ids"),
+    involvedPlayerName: text("involved_player_name"),
+    spawnedAt: timestamp("spawned_at", { withTimezone: true }),
+    lastLifecycleAt: timestamp("last_lifecycle_at", { withTimezone: true }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    discordChannelId: text("discord_channel_id"),
     deliveryStatus: text("delivery_status").notNull().default("pending"),
     deliveryAttempts: integer("delivery_attempts").notNull().default(0),
     discordMessageId: text("discord_message_id"),
@@ -103,6 +118,43 @@ export const spawnEvents = pgTable(
     integrationEventUnique: uniqueIndex("spawn_events_integration_event_id_unique").on(
       table.integrationEventId,
     ),
+    externalSpawnAlertIdIdx: index("spawn_events_external_spawn_alert_id_idx").on(
+      table.externalSpawnAlertId,
+    ),
+    lifecycleStatusIdx: index("spawn_events_lifecycle_status_idx").on(table.lifecycleStatus),
+    serverExternalUnique: uniqueIndex("spawn_events_server_external_unique").on(
+      table.serverId,
+      table.externalSpawnAlertId,
+    ),
+  }),
+);
+
+export const spawnLifecycleHistory = pgTable(
+  "spawn_lifecycle_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    spawnEventId: uuid("spawn_event_id")
+      .notNull()
+      .references(() => spawnEvents.id),
+    externalSpawnAlertId: text("external_spawn_alert_id").notNull(),
+    status: text("status").notNull(),
+    revision: integer("revision").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    playerName: text("player_name"),
+    payloadHash: text("payload_hash"),
+    normalizedPayload: jsonb("normalized_payload"),
+    applied: boolean("applied").default(true),
+    rejectionReason: text("rejection_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    spawnEventIdIdx: index("lifecycle_history_spawn_event_id_idx").on(table.spawnEventId),
+    externalAlertIdIdx: index("lifecycle_history_external_alert_id_idx").on(
+      table.externalSpawnAlertId,
+    ),
+    statusIdx: index("lifecycle_history_status_idx").on(table.status),
+    occurredAtIdx: index("lifecycle_history_occurred_at_idx").on(table.occurredAt),
   }),
 );
 

@@ -7,5 +7,6 @@ export * from "./mentions.js";
 export * from "./coordinates.js";
 export * from "./fingerprint.js";
 export * from "./spawnAlert.js";
+export * from "./spawnLifecycle.js";
 export * from "./errors.js";
 export * from "./time.js";
