@@ -54,6 +54,27 @@ export const unlinkCommand = new SlashCommandBuilder()
   .setName(PT_BR.identity.unlink.name)
   .setDescription(PT_BR.identity.unlink.description);
 
+export const diarioCommand = new SlashCommandBuilder()
+  .setName(PT_BR.commands.diario.name)
+  .setDescription(PT_BR.commands.diario.description)
+  .addStringOption((option) =>
+    option
+      .setName("tipo")
+      .setDescription(PT_BR.commands.diario.optionTipo)
+      .addChoices(
+        { name: PT_BR.commands.diario.optionTipos.todos, value: "todos" },
+        { name: PT_BR.commands.diario.optionTipos.capturas, value: "capturas" },
+        { name: PT_BR.commands.diario.optionTipos.shinies, value: "shinies" },
+        { name: PT_BR.commands.diario.optionTipos.lendarios, value: "lendarios" },
+        { name: PT_BR.commands.diario.optionTipos.evolucoes, value: "evolucoes" },
+      )
+      .setRequired(false),
+  );
+
+export const estatisticasCommand = new SlashCommandBuilder()
+  .setName(PT_BR.commands.estatisticas.name)
+  .setDescription(PT_BR.commands.estatisticas.description);
+
 export const ALL_SLASH_COMMANDS = [
   dexCommand,
   fraquezasCommand,
@@ -63,4 +84,6 @@ export const ALL_SLASH_COMMANDS = [
   linkCommand,
   profileCommand,
   unlinkCommand,
+  diarioCommand,
+  estatisticasCommand,
 ];

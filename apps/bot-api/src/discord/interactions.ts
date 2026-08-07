@@ -18,6 +18,11 @@ import {
   handleUnlinkCommand,
   type IdentityDeps,
 } from "./identity.js";
+import {
+  handleDiarioCommand,
+  handleEstatisticasCommand,
+  type JourneyCommandDeps,
+} from "./journey.js";
 
 export interface InteractionDeps {
   logger: AppLogger;
@@ -25,6 +30,7 @@ export interface InteractionDeps {
   ranker: AutocompleteRanker;
   statusService: StatusService;
   identity: IdentityDeps;
+  journey: JourneyCommandDeps;
 }
 
 export function createInteractionHandler(
@@ -69,6 +75,8 @@ export function createInteractionHandler(
         "ajuda",
         "status-professor",
         "perfil",
+        "diario",
+        "estatisticas",
       ].includes(commandName);
       if (needsDefer) {
         await commandInteraction.deferReply();
@@ -134,6 +142,12 @@ export function createInteractionHandler(
           break;
         case "desvincular":
           await handleUnlinkCommand(commandInteraction, deps.identity);
+          break;
+        case "diario":
+          await handleDiarioCommand(commandInteraction, deps.journey);
+          break;
+        case "estatisticas":
+          await handleEstatisticasCommand(commandInteraction, deps.journey);
           break;
         default:
           break;

@@ -10,3 +10,4 @@ export * from "./spawnAlert.js";
 export * from "./spawnLifecycle.js";
 export * from "./errors.js";
 export * from "./time.js";
+export * from "./gameEvent.js";

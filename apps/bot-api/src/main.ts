@@ -173,6 +173,7 @@ async function main(): Promise<void> {
       ranker,
       statusService,
       identity: { config, db, redis: redisClient },
+      journey: { config, db },
     }),
   );
 

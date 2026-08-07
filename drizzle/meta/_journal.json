@@ -29,6 +29,13 @@
       "when": 1786066650686,
       "tag": "0003_bbsa_spawn_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786107000000,
+      "tag": "0004_player_journey",
+      "breakpoints": true
     }
   ]
 }

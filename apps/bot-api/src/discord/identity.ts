@@ -12,6 +12,7 @@ import {
   findActiveIdentity,
   getLatestProfileSnapshot,
   unlinkIdentity,
+  findJourneyStatsByLinkId,
   type DatabaseClient,
 } from "@bigbangcraft/database";
 import type { Redis } from "ioredis";
@@ -105,7 +106,8 @@ export async function handleProfileCommand(
     return;
   }
   const data = isRecord(snapshot.snapshot) ? snapshot.snapshot : {};
-  const fields = profileFields(data);
+  const journeyStats = await findJourneyStatsByLinkId(deps.db, link.id);
+  const fields = profileFields(data, journeyStats);
   const stale =
     Date.now() - snapshot.capturedAt.getTime() > deps.config.IDENTITY_PROFILE_STALE_SECONDS * 1000;
   await replySuccess(interaction, {
@@ -216,6 +218,7 @@ function isAllowedGuild(guildId: string | null, config: AppConfig): boolean {
 
 function profileFields(
   data: Record<string, unknown>,
+  journeyStats: Awaited<ReturnType<typeof findJourneyStatsByLinkId>>,
 ): Array<{ name: string; value: string; inline?: boolean }> {
   const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
   const progression = isRecord(data.progression) ? data.progression : {};
@@ -274,6 +277,19 @@ function profileFields(
       name: "📖 Pokédex",
       value: `${pokedex.caught.toLocaleString("pt-BR")} de ${pokedex.total.toLocaleString("pt-BR")} espécies capturadas`,
     });
+
+  if (journeyStats && journeyStats.totalCaptures > 0) {
+    const parts: string[] = [];
+    parts.push(`${journeyStats.totalCaptures.toLocaleString("pt-BR")} capturas`);
+    if (journeyStats.shinyCaptures > 0)
+      parts.push(`${journeyStats.shinyCaptures} shinies`);
+    if (journeyStats.legendaryCaptures > 0)
+      parts.push(`${journeyStats.legendaryCaptures} lendários`);
+    if (journeyStats.rareCaptures > 0)
+      parts.push(`${journeyStats.rareCaptures} raros capturados`);
+    fields.push({ name: "⚔️ Jornada", value: parts.join("\n") });
+  }
+
   return fields.length > 0
     ? fields
     : [{ name: "Dados", value: "Ainda não há módulos de perfil disponíveis." }];

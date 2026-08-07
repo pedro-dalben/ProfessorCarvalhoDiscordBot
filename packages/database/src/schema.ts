@@ -8,6 +8,7 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 
 export const guildSettings = pgTable(
@@ -289,6 +290,115 @@ export const playerProfileSnapshots = pgTable(
     linkServerUnique: uniqueIndex("player_profile_snapshots_link_server_unique").on(
       table.linkId,
       table.serverId,
+    ),
+  }),
+);
+
+export const gameEvents = pgTable(
+  "game_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventId: text("event_id").notNull(),
+    eventType: text("event_type").notNull(),
+    schemaVersion: text("schema_version").notNull().default("1.0"),
+    serverId: text("server_id").notNull(),
+    source: text("source").notNull(),
+    sourceEventId: text("source_event_id"),
+    minecraftUuid: uuid("minecraft_uuid"),
+    identityLinkId: uuid("identity_link_id"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    payload: jsonb("payload").notNull(),
+    backfilled: boolean("backfilled").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    eventIdUnique: uniqueIndex("game_events_event_id_unique").on(table.eventId),
+    sourceEventIdx: index("game_events_source_event_idx").on(table.source, table.sourceEventId),
+    minecraftUuidIdx: index("game_events_minecraft_uuid_idx").on(table.minecraftUuid),
+    identityLinkIdIdx: index("game_events_identity_link_id_idx").on(table.identityLinkId),
+    eventTypeIdx: index("game_events_event_type_idx").on(table.eventType),
+    occurredAtIdx: index("game_events_occurred_at_idx").on(table.occurredAt),
+    serverIdIdx: index("game_events_server_id_idx").on(table.serverId),
+  }),
+);
+
+export const playerJourneyEntries = pgTable(
+  "player_journey_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    identityLinkId: uuid("identity_link_id"),
+    minecraftUuid: uuid("minecraft_uuid").notNull(),
+    gameEventId: uuid("game_event_id").references(() => gameEvents.id),
+    entryType: text("entry_type").notNull(),
+    title: text("title"),
+    descriptionKey: text("description_key"),
+    metadata: jsonb("metadata").notNull().default({}),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    minecraftUuidIdx: index("journey_entries_minecraft_uuid_idx").on(table.minecraftUuid),
+    identityLinkIdIdx: index("journey_entries_identity_link_id_idx").on(table.identityLinkId),
+    entryTypeIdx: index("journey_entries_entry_type_idx").on(table.entryType),
+    occurredAtIdx: index("journey_entries_occurred_at_idx").on(table.occurredAt),
+    gameEventIdIdx: index("journey_entries_game_event_id_idx").on(table.gameEventId),
+  }),
+);
+
+export const playerJourneyStats = pgTable(
+  "player_journey_stats",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    linkId: uuid("link_id"),
+    minecraftUuid: uuid("minecraft_uuid").notNull(),
+    minecraftName: text("minecraft_name").notNull(),
+    totalCaptures: integer("total_captures").notNull().default(0),
+    uniqueSpeciesCaptured: integer("unique_species_captured").notNull().default(0),
+    shinyCaptures: integer("shiny_captures").notNull().default(0),
+    legendaryCaptures: integer("legendary_captures").notNull().default(0),
+    mythicalCaptures: integer("mythical_captures").notNull().default(0),
+    rareCaptures: integer("rare_captures").notNull().default(0),
+    rareEncounters: integer("rare_encounters").notNull().default(0),
+    rareDefeated: integer("rare_defeated").notNull().default(0),
+    rareDespawned: integer("rare_despawned").notNull().default(0),
+    totalPlaytime: doublePrecision("total_playtime").notNull().default(0),
+    sessions: integer("sessions").notNull().default(0),
+    evolutions: integer("evolutions").notNull().default(0),
+    trades: integer("trades").notNull().default(0),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    mostCapturedSpecies: text("most_captured_species"),
+    rarestCapturedSpecies: text("rarest_captured_species"),
+    lastCapturedSpecies: text("last_captured_species"),
+    lastShinySpecies: text("last_shiny_species"),
+    lastLegendarySpecies: text("last_legendary_species"),
+    fastestRareCaptureSeconds: doublePrecision("fastest_rare_capture_seconds"),
+    totalRareCaptureTimeSeconds: doublePrecision("total_rare_capture_time_seconds").notNull().default(0),
+    rareCaptureCount: integer("rare_capture_count").notNull().default(0),
+    lastPokedexCount: integer("last_pokedex_count").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    minecraftUuidUnique: uniqueIndex("journey_stats_minecraft_uuid_unique").on(table.minecraftUuid),
+    linkIdIdx: index("journey_stats_link_id_idx").on(table.linkId),
+  }),
+);
+
+export const playerCapturedSpecies = pgTable(
+  "player_captured_species",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    minecraftUuid: uuid("minecraft_uuid").notNull(),
+    species: text("species").notNull(),
+    firstCapturedAt: timestamp("first_captured_at", { withTimezone: true }).notNull(),
+    captureCount: integer("capture_count").notNull().default(1),
+  },
+  (table) => ({
+    uuidSpeciesUnique: uniqueIndex("captured_species_uuid_species_unique").on(
+      table.minecraftUuid,
+      table.species,
     ),
   }),
 );

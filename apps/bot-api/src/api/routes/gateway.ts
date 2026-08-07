@@ -9,6 +9,9 @@ import {
   consumeIdentityLinkCode,
   findActiveIdentity,
   upsertGatewayServer,
+  storeGameEvent,
+  processSessionStarted,
+  processProfileSnapshot,
 } from "@bigbangcraft/database";
 import { gatewayEvents, identityLinkAudit, playerProfileSnapshots } from "@bigbangcraft/database";
 import { eq } from "drizzle-orm";
@@ -221,7 +224,42 @@ async function handleEvents(request: FastifyRequest, reply: FastifyReply, deps: 
     if ((error as { code?: string }).code !== "23505") throw error;
     return reply.send({ accepted: true, eventId: event.eventId, duplicate: true });
   }
+  void processGatewayEventForJourney(deps, event).catch((err) => {
+    deps.logger.error({ err, eventId: event.eventId }, "Falha ao criar GameEvent da jornada.");
+  });
   return reply.send({ accepted: true, eventId: event.eventId, duplicate: false });
+}
+
+async function processGatewayEventForJourney(
+  deps: GatewayDeps,
+  event: { eventId: string; eventType: string; schemaVersion: string; serverId: string; occurredAt: string; payload: unknown },
+): Promise<void> {
+  const sessionTypes = ["player.session.started", "player.session.ended"];
+  if (!sessionTypes.includes(event.eventType)) return;
+
+  const p = isRecord(event.payload) ? event.payload : {};
+  const player = isRecord(p.player) ? p.player : {};
+  const mcUuid = typeof player.minecraftUuid === "string" ? player.minecraftUuid : undefined;
+
+  if (!mcUuid || !isUuid(mcUuid)) return;
+
+  const result = await storeGameEvent({ db: deps.db }, {
+    eventId: event.eventId,
+    eventType: event.eventType,
+    schemaVersion: event.schemaVersion,
+    serverId: event.serverId,
+    source: "gateway",
+    sourceEventId: event.eventId,
+    minecraftUuid: mcUuid,
+    occurredAt: new Date(event.occurredAt),
+    payload: p,
+  });
+
+  if (result.dbId && !result.duplicate) {
+    if (event.eventType === "player.session.started") {
+      await processSessionStarted({ db: deps.db }, mcUuid, undefined);
+    }
+  }
 }
 
 async function handleLink(request: FastifyRequest, reply: FastifyReply, deps: GatewayDeps) {
@@ -367,6 +405,26 @@ async function handleProfile(request: FastifyRequest, reply: FastifyReply, deps:
       createdAt: new Date(),
     });
   });
+  void (async () => {
+    try {
+      const result = await storeGameEvent({ db: deps.db }, {
+        eventId: event.eventId,
+        eventType: "player.profile.snapshot",
+        schemaVersion: event.schemaVersion,
+        serverId: auth.serverId,
+        source: "gateway",
+        sourceEventId: event.eventId,
+        minecraftUuid,
+        occurredAt: new Date(event.occurredAt),
+        payload: sanitized,
+      });
+      if (result.dbId && !result.duplicate) {
+        await processProfileSnapshot({ db: deps.db }, result.dbId, minecraftUuid, link.id, sanitized);
+      }
+    } catch (err) {
+      deps.logger.error({ err, eventId: event.eventId }, "Falha ao processar snapshot da jornada.");
+    }
+  })();
   return reply.send({ accepted: true, eventId: event.eventId, duplicate: false });
 }
 
