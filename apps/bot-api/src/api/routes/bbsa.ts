@@ -101,6 +101,10 @@ export function registerBbsaRoutes(
 
       const validation = validateCsaPayload(rawBody);
       if (!validation.ok) {
+        logger.warn(
+          { code: validation.code, message: validation.message, body: JSON.stringify(rawBody)?.slice(0, 2000) },
+          "BBSA: payload inválido rejeitado",
+        );
         return reply.status(400).send({ error: { code: validation.code, message: validation.message } });
       }
 
@@ -109,6 +113,10 @@ export function registerBbsaRoutes(
         serverId: config.BIGMONCRAFT_SERVER_ID,
       });
       if (!normalizedResult.ok) {
+        logger.warn(
+          { code: normalizedResult.code, message: normalizedResult.message, body: JSON.stringify(validation.payload)?.slice(0, 2000) },
+          "BBSA: normalização rejeitou payload",
+        );
         return reply
           .status(400)
           .send({ error: { code: normalizedResult.code, message: normalizedResult.message } });
@@ -245,6 +253,10 @@ export function registerBbsaRoutes(
 
       const validation = validateCsaPayload(rawBody);
       if (!validation.ok) {
+        logger.warn(
+          { code: validation.code, message: validation.message, body: JSON.stringify(rawBody)?.slice(0, 2000) },
+          "BBSA: payload inválido rejeitado",
+        );
         return reply.status(400).send({ error: { code: validation.code, message: validation.message } });
       }
 
@@ -253,6 +265,10 @@ export function registerBbsaRoutes(
         serverId: config.BIGMONCRAFT_SERVER_ID,
       });
       if (!normalizedResult.ok) {
+        logger.warn(
+          { code: normalizedResult.code, message: normalizedResult.message, body: JSON.stringify(validation.payload)?.slice(0, 2000) },
+          "BBSA: normalização rejeitou payload",
+        );
         return reply
           .status(400)
           .send({ error: { code: normalizedResult.code, message: normalizedResult.message } });

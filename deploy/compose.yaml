@@ -32,7 +32,7 @@ services:
 
   bot-api:
     build:
-      context: .
+      context: ..
       dockerfile: apps/bot-api/Dockerfile
     restart: unless-stopped
     environment:
@@ -72,7 +72,7 @@ services:
 
   worker:
     build:
-      context: .
+      context: ..
       dockerfile: apps/worker/Dockerfile
     restart: unless-stopped
     environment:

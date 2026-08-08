@@ -127,7 +127,8 @@ export function buildBbsaLifecycleEmbed(
   }
 
   if (event.biome) {
-    lines.push(`**${PT_BR.spawnAlert.fields.biome}**: ${escapeMarkdown(event.biome.replace(/^minecraft:/, ""))}`);
+    const cleanBiome = event.biome.replace(/^biome\./, "").replace(/^minecraft:/, "").replace(/^minecraft\./, "");
+    lines.push(`**${PT_BR.spawnAlert.fields.biome}**: ${escapeMarkdown(cleanBiome)}`);
   }
 
   if (

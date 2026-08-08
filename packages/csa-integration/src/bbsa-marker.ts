@@ -77,6 +77,11 @@ export function parseBbsaMarkerLine(line: string): BbsaMarkerResult | null {
     confidence = "low";
   }
 
+  const dexNumber = parseOptionalInt(fields.get("dex") ?? fields.get("dex_number"));
+  if (dexNumber !== undefined && dexNumber > 0) {
+    event.dexNumber = dexNumber;
+  }
+
   event.species = parseField(fields.get("species"), BBSA_MARKER_LIMITS.maxSpeciesLength);
   event.displayName = parseField(fields.get("pokemon"), BBSA_MARKER_LIMITS.maxPokemonLength);
 
@@ -178,7 +183,7 @@ function parseField(value: string | undefined, maxLength: number): string | unde
 
 function parseOptionalNaValue(value: string | undefined): string | undefined {
   if (!value || value === "N/A" || value === "null") return undefined;
-  return value.slice(0, 256);
+  return value.replace(/%20/g, " ").slice(0, 256);
 }
 
 function parseOptionalInt(value: string | undefined): number | undefined {
